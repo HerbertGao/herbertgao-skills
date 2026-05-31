@@ -1,8 +1,6 @@
 ---
-name: "OPSX: 应用（subagent 编排）"
 description: 以编排模式实现 OpenSpec 变更——按范围分组、每组派 subagent 开发、主 agent 只做状态管理与 review（实验性）
-category: 工作流
-tags: [workflow, artifacts, experimental, subagent]
+argument-hint: "[change-name]"
 ---
 
 以**编排模式**实现 OpenSpec 变更中的任务。
