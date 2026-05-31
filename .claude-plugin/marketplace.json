@@ -13,6 +13,11 @@
       "name": "review-loop",
       "source": "./review-loop",
       "description": "Adversarial review loop — runs Codex + Code Reviewer + Reality Checker in parallel over your proposal and diff, merges/triages findings, dispatches minimal fixes, and re-reviews until pass (APPROVE/CLEAR) or a configurable round cap."
+    },
+    {
+      "name": "opsx",
+      "source": "./opsx",
+      "description": "Orchestrated OpenSpec apply — the main agent groups pending tasks by scope, dispatches a subagent per group (parallel then serial by dependency), and only manages OpenSpec state and reviews; it never writes implementation code itself. Ships /opsx:apply-subagent plus its SOT skill."
     }
   ]
 }

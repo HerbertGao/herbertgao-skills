@@ -1,0 +1,20 @@
+{
+  "name": "opsx",
+  "version": "1.0.0",
+  "description": "Orchestrated OpenSpec apply — the main agent groups pending tasks by scope, dispatches a subagent per group (parallel then serial by dependency), and only manages OpenSpec state and reviews; it never writes implementation code itself. Ships as /opsx:apply-subagent plus its SOT skill.",
+  "author": {
+    "name": "HerbertGao",
+    "url": "https://github.com/HerbertGao"
+  },
+  "homepage": "https://github.com/HerbertGao/claude-skills",
+  "repository": "https://github.com/HerbertGao/claude-skills",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "skill",
+    "openspec",
+    "subagent",
+    "orchestration",
+    "workflow"
+  ]
+}
