@@ -1,6 +1,6 @@
 {
   "name": "opsx",
-  "version": "2026.6.0",
+  "version": "2026.6.1",
   "description": "Orchestrated OpenSpec apply — the main agent groups pending tasks by scope, dispatches a subagent per group (parallel then serial by dependency), and only manages OpenSpec state and reviews; it never writes implementation code itself. Ships as /opsx:apply-subagent plus its SOT skill.",
   "author": {
     "name": "HerbertGao",
