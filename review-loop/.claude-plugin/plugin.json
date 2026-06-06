@@ -1,6 +1,6 @@
 {
   "name": "review-loop",
-  "version": "2026.6.3",
+  "version": "2026.6.4",
   "description": "Adversarial review loop that iterates your proposal and diff to a clean pass — parallel Codex + Code Reviewer + Reality Checker review, merge/triage, minimal-change fixes, re-review until APPROVE/CLEAR or a configurable round cap.",
   "author": {
     "name": "HerbertGao",
