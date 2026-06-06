@@ -21,7 +21,7 @@ metadata:
 - **cursor-agent worker 负责**：每组任务的具体编码实现（经 `sub-agents-skills` 的 `run_subagent.py` 以 `--print --output-format json --trust` 单次调用、默认模型 composer-2.5），完成后自行把任务文件中的复选框标记为 `- [x]`，并在输出末尾给出契约 JSON。
 - 主 agent 只在做极小的状态/标记修正时才直接动文件；任何成规模的编码都必须下放给 cursor worker。
 
-**与 subagent 版的差异**：worker 由 `Task(general-purpose)`（烧 Claude token）换成 shell-out cursor-agent（走 cursor 订阅额度、更快更省）；review 不再每组/分项目做，而是**全部编码完成后挂一次 review-loop**。其余编排逻辑一致。
+**与 subagent 版的差异**：worker 由 `Task(general-purpose)` 换成 shell-out cursor-agent（走 cursor 订阅额度而非 Claude token）；review 不再每组/分项目做，而是**全部编码完成后挂一次 review-loop**。其余编排逻辑一致。
 
 **输入**：可选指定变更名称。如果省略，检查是否可以从对话上下文中推断。如果模糊或不明确，你**必须**提示获取可用变更。
 
@@ -87,9 +87,15 @@ openspec-cn instructions apply --change "<name>" --json
 
 - **范围 = 任务所触及的子项目 / 模块 / 技术栈**。典型边界：Java 端 / Rust 端 / React 端；backend / frontend / infra；或不同 capability / spec 区域。
 - 每个任务归入它主要改动的那个范围；跨范围任务归入"主战场"，并在 worker spec 里点明需兼顾的另一侧。
-- 组的粒度以 **3–8 个任务**为宜：太碎合并，过大再拆。**注意 cursor worker 是单次 10 分钟超时调用，过大的组容易超时或返回 incomplete——宁可拆小。**
+- 组的粒度以 **3–8 个任务**为宜：太碎合并，过大再拆。worker 单次有超时上限（`--timeout`，默认 10 分钟），过大的组宁可拆小。
 - **判断组间依赖**：若 B 组依赖 A 组产出（前端调后端本次新增 API、测试依赖被测代码先就位），记 A → B。无此关系的组互相独立。
 - 把分组结果与依赖关系展示给用户（见"分组方案输出"），然后继续。
+
+**按适配性细化下放**：分组后，对每组判断是否下放给 cursor worker：
+
+- **下放**：纯代码、机械、规格已明确的任务（如 manifest/测试编写、按既定模式转写、跨文件结构同步）。
+- **留主 agent**：需要复杂推理或迭代探索的任务（如 fixture 录制、阈值调参），以及所有验证（见步骤 7）。
+- **复杂单任务**（推理负载大）有超时风险，降险二选一：(a) 拆成更小的子组；(b) 主 agent 先把目标文件预填到只需「转写/补全」的程度再下放。
 
 若全部待处理任务本就同一范围且无法有意义切分，则视为**单组**，直接进入下一步（仍走 cursor 派发）。
 
@@ -118,6 +124,7 @@ python3 "$RS" \
 - 相关上下文文件的**绝对路径**（proposal / specs / design / tasks 等），要求 worker 自己读
 - 任务文件（tasks.md）的绝对路径，并明确约定：**每完成一个任务，立即把该任务的 `- [ ]` 改为 `- [x]`**
 - 约束：保持改动最小且**限定在本组范围内**；**不要碰其他组负责的任务或其复选框**；**不要执行 `git commit` / `git add` / 任何 git 写操作**；遇到不清楚的需求或设计问题不要猜测，停下来在契约 JSON 的 `issues` 里说明
+- **不必自跑验证命令**：worker 只需实现代码 + 标复选框 + 报告契约，验证由主 agent 统一做（步骤 7）。若因环境限制跑不了 pytest/load/lint，不要空转、也不要因此判失败，在 `issues` 里用 `kind: blocker` 注明「环境受限无法验证」即可。
 - **在最终输出的末尾，附上一个符合下方「worker 返回契约」schema 的 JSON 对象（放进 ```json 代码块）**——主 agent 靠它判断进度与是否暂停
 
 **步骤 7：解析 worker 返回 → 暂停检查 → 收尾挂一次 review-loop**
@@ -133,7 +140,10 @@ python3 "$RS" \
 
 再从外层 `result` 文本里提取 worker 输出的**内层契约 JSON**（```json 块）。若 worker 没输出契约 JSON，降级用 `result` 文本 + `git -C <repo> diff --stat` 兜底判断本组实际改了什么（记一笔"worker 未返回契约，已用 diff 兜底"）。
 
-7b. **暂停检查。** 任一组内层 `needsAttention: true`（`incomplete` 或 `issues` 非空），或外层 `status` 为 `partial`/`error`：**不要进入 review**，按步骤 8 的暂停流程把问题摊给用户。
+7b. **暂停检查（区分真问题 vs 环境限制）。** worker 报 `needsAttention: true` 不一定是真问题，按下面分流：
+
+- **仅环境限制**（`issues` 全是「验证命令被拒 / 无法跑 pytest/load」这类，无 `incomplete`、无代码缺陷，外层 `status` 为 `success`）：不暂停。视该组已交付，验证接到主 agent（自己跑 pytest/load/lint 确认），过即视同通过。
+- **真问题**（`issues` 含 `ambiguous-requirement / design-issue / error`，或有 `incomplete`，或外层 `status` 为 `partial`/`error`）：不进入 review，按步骤 8 暂停；超时（partial/exit 124）按步骤 7a 拆小或预填后重发，不原样重试。
 
 7c. **补标复选框。** 对各组 `completed[].checkboxMarked` 为 `false` 的任务，主 agent 在 tasks.md 补标 `- [x]` 并记一笔。
 
@@ -293,12 +303,14 @@ Implement the assigned group of OpenSpec tasks directly in the workspace.
 - 开始前主 agent 始终亲自阅读上下文文件（来自 apply instructions 输出）
 - 分组依据是"范围"（子项目 / 模块 / 技术栈），不是任务序号；先并行后串行，依赖关系由主 agent 判断；组粒度 3–8 任务，过大易超时要拆小
 - worker 派发用 shell-out `run_subagent.py`（`--agent opsx-implementer --agents-dir ~/.opsx-cursor/agents --cwd <repo>`），并行用 Bash `run_in_background`；把完整任务清单、上下文文件绝对路径、约束、契约 schema 一次性写进 `--prompt`
-- worker 返回是双层 JSON（外层 run_subagent + 内层契约）；主 agent 先剥外层看 `status`（partial/error 即暂停），再解析内层 `needsAttention`；任一为问题信号一律先暂停问人，不直接判通过
+- worker 返回是双层 JSON（外层 run_subagent + 内层契约）；主 agent 先剥外层看 `status`（partial/error 即暂停），再解析内层 `needsAttention`——但**区分真问题与环境限制**：worker 因沙箱跑不了验证而报 `needsAttention` 不算真问题，主 agent 自己验、不暂停；只有实质缺陷 / `incomplete` / 超时 / error 才暂停
 - 复选框 `- [x]` 由 cursor worker 自己标记（在契约 `checkboxMarked` 中自报）；主 agent 仅在漏标时补标
 - review 方式：**全部编码完成后挂一次 review-loop**（提案 + 全部代码 diff），不通过由 review-loop 自身修复循环处理；必要时把某组修复 spec 重新下放给 cursor worker
 - worker spec 里禁止 worker 跑 git 写操作；主 agent 也不替 worker 提交
 - 任务模棱两可、揭示设计问题、worker 报错/超时/越界时暂停——不要猜测
 - 使用 CLI 输出中的 contextFiles，不要假设特定文件名
+- 按适配性下放：纯代码 / 机械 / 规格明确的任务下放 cursor；复杂推理 / 迭代 / 调参留主 agent；复杂单任务有超时风险，拆小或预填到「转写」程度再下放
+- 所有验证归主 agent：worker spec 明说「不必自验」；收尾 review-loop 前主 agent 先自己跑验证确认各组产出，再进对抗 review
 
 **流畅的工作流集成**
 
