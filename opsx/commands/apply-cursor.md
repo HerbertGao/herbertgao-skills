@@ -12,9 +12,9 @@ argument-hint: "[change-name]"
 调用 `opsx:openspec-apply-change-cursor` skill，并把 `$ARGUMENTS`（若有）作为目标变更名传入。该 skill 是本工作流的唯一事实来源（SOT），完整定义了：
 
 - **步骤 0 doctor 前置**：开跑前校验 cursor-agent 在 PATH 且已登录、sub-agents-skills 的 `run_subagent.py` 可定位、默认模型 composer-2.5、非 root；任一不满足报错 + 修复指令并停止，不默默退化
-- 主 agent 作为**编排者**：选变更、跑 `openspec-cn` 状态/指令、读上下文文件、按范围分组、**shell-out `run_subagent.py` 派发 cursor worker**、解析双层返回、补标遗漏复选框、收尾 review、报告进度、建议归档——**不亲自写实现代码**
+- 主 agent 作为**编排者**：选变更、跑 `openspec-cn` 状态/指令、读上下文文件、按范围分组、**经壳 subagent `runner:sub-agent-runner` 派发 cursor worker（壳不可用 fallback Bash shell-out `run_subagent.py`）**、解析双层返回、补标遗漏复选框、收尾 review、报告进度、建议归档——**不亲自写实现代码**
 - 按**范围**（子项目 / 模块 / 技术栈）对待处理任务分组，判断组间依赖；组粒度 3–8 任务（过大易超时要拆小）
-- **先并行后串行**派发 cursor worker（Bash `run_in_background` 并发独立组）实现各组任务
+- **先并行后串行**派发 cursor worker（壳路径用多个 Agent 调用并发、fallback 用 Bash `run_in_background`）实现各组任务
 - 复选框 `- [x]` 由 cursor worker 自己标记，主 agent 仅补漏
 - review 方式：**全部编码完成后挂一次 `review-loop`**（提案 + 全部代码 diff），不通过由 review-loop 自身修复循环处理；必要时把某组修复 spec 重新下放给 cursor worker
 
