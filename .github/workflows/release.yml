@@ -1,0 +1,74 @@
+name: release
+
+# Triggered by pushing a tag (done by scripts/release.sh). The tag's commit already
+# carries the synced versions; this workflow VERIFIES that, then opens a DRAFT release
+# with an auto-generated skeleton for you to flesh out and Publish.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # create the GitHub release
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for the changelog range
+
+      - name: Resolve version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify every manifest matches the tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          v='${{ steps.ver.outputs.version }}'
+          rc=0
+          for f in */.claude-plugin/plugin.json; do
+            got=$(jq -r '.version' "$f")
+            if [[ "$got" == "$v" ]]; then echo "ok  $f = $got"
+            else echo "::error file=$f::version '$got' != tag '$v'"; rc=1; fi
+          done
+          mf=.claude-plugin/marketplace.json
+          got=$(jq -r '.metadata.version' "$mf")
+          if [[ "$got" == "$v" ]]; then echo "ok  $mf = $got"
+          else echo "::error file=$mf::metadata.version '$got' != tag '$v'"; rc=1; fi
+          [[ $rc -eq 0 ]] || { echo "::error::版本号与 tag 不一致——请用 scripts/release.sh 发版，勿手动打 tag"; exit 1; }
+
+      - name: Build draft notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          prev=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          range="${prev:+${prev}..}${GITHUB_REF_NAME}"
+          sec() { # <heading> <grep-ere>
+            local body; body=$(git log --no-merges --pretty='- %s' ${range} 2>/dev/null | grep -E "$2" || true)
+            [[ -n "$body" ]] && printf '### %s\n%s\n\n' "$1" "$body"
+          }
+          {
+            echo "## ${GITHUB_REF_NAME}"
+            echo
+            echo "<!-- 草稿：补技术叙事后再 Publish。以下为 ${range:-全部历史} 的提交，按类型分组。 -->"
+            echo
+            sec "Features" '^- feat'
+            sec "Fixes" '^- fix'
+            sec "其他 (chore / docs / refactor / ci / build / perf)" '^- (chore|docs|refactor|ci|build|perf|style|test)'
+            echo "---"
+            echo "_自动草稿（.github/workflows/release.yml）；plugin / marketplace 版本统一到 ${{ steps.ver.outputs.version }}。_"
+          } > notes.md
+          echo "----- notes.md -----"; cat notes.md
+
+      - name: Create draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --draft \
+            --notes-file notes.md

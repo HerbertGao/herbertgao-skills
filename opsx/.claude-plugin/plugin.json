@@ -1,6 +1,6 @@
 {
   "name": "opsx",
-  "version": "2026.6.7",
+  "version": "2026.6.8",
   "description": "Orchestrated OpenSpec apply — the main agent groups pending tasks by scope and dispatches a worker per group (parallel then serial by dependency), only managing OpenSpec state and reviews; it never writes implementation code itself. Ships /opsx:apply-subagent (Claude subagent worker) and /opsx:apply-cursor (cursor-agent / composer-2.5 worker + one final review-loop), each with its SOT skill.",
   "author": {
     "name": "HerbertGao",
