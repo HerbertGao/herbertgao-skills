@@ -20,6 +20,7 @@ HerbertGao 的自托管 Claude Code skills marketplace。集中管理自建 skil
 | --- | --- |
 | [`review-loop`](./review-loop/skills/review-loop/SKILL.md) | 对本次提案与代码变更跑对抗性 review 自动循环：Codex + Code Reviewer + Reality Checker 三方并行 → 合并去重 triage → 派 Minimal Change Engineer 修复 → 重新 review，直到放行（APPROVE/CLEAR；Codex 结构性未跑完时 APPROVE-DEGRADED）或到可配置轮数上限。常配合内置 `/goal` 长跑。 |
 | [`opsx`](./opsx/skills/openspec-apply-change-subagent/SKILL.md) | 以编排模式实现 OpenSpec 变更：主 agent 按范围（子项目 / 模块 / 技术栈）分组待处理任务，先并行后串行派发 subagent 开发，自己只跑 `openspec-cn` 状态管理与 review，不亲自写实现代码。提供 `/opsx:apply-subagent` 命令 + 其 SOT skill。需要 `openspec-cn` CLI。 |
+| [`xquik`](./xquik/skills/xquik-x-data/SKILL.md) | Xquik X 数据工作流 skill：按公开 MCP manifest 和 docs 配置远程 MCP，使用 REST API、webhooks、extraction、monitoring，并把 write actions 保持在明确确认之后。 |
 
 ## 结构
 
@@ -33,13 +34,19 @@ claude-skills/
 │  └─ skills/
 │     └─ review-loop/
 │        └─ SKILL.md          # skill 本体（SOT）
-└─ opsx/                      # 一个 plugin（命令 + skill）
+├─ opsx/                      # 一个 plugin（命令 + skill）
    ├─ .claude-plugin/
    │  └─ plugin.json          # plugin 清单
    ├─ commands/
    │  └─ apply-subagent.md    # /opsx:apply-subagent 薄命令
    └─ skills/
       └─ openspec-apply-change-subagent/
+         └─ SKILL.md          # skill 本体（SOT）
+└─ xquik/                     # 一个 plugin（纯 skill）
+   ├─ .claude-plugin/
+   │  └─ plugin.json          # plugin 清单
+   └─ skills/
+      └─ xquik-x-data/
          └─ SKILL.md          # skill 本体（SOT）
 ```
 

@@ -18,6 +18,11 @@
       "name": "opsx",
       "source": "./opsx",
       "description": "Orchestrated OpenSpec apply — the main agent groups pending tasks by scope and dispatches a worker per group (parallel then serial by dependency), only managing OpenSpec state and reviews; it never writes implementation code itself. Ships /opsx:apply-subagent (Claude subagent worker) with its SOT skill."
+    },
+    {
+      "name": "xquik",
+      "source": "./xquik",
+      "description": "Xquik workflow skill for X data automation via the public MCP server, REST API docs, webhooks, extraction tools, monitoring, and confirmation-gated write actions."
     }
   ]
 }
