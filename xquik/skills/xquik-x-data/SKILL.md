@@ -37,6 +37,6 @@ Set the `Authorization` header to `Bearer {XQUIK_API_KEY}`. Treat the API key as
 
 ## Supported Surface
 
-Source-backed public metadata lists 120 REST endpoints, 2 MCP tools, 23 extraction tools, webhooks, monitoring, and write actions.
+Source-backed public metadata lists REST endpoints, MCP tools, extraction tools, webhooks, monitoring, and write actions.
 
 Keep public copy concise. Do not describe private routing or private operational details.
