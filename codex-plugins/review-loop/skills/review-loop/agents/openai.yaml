@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Loop"
+  short_description: "Adversarial review loop"
+  default_prompt: "Use $review-loop to review this change until it passes."

@@ -34,8 +34,8 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          plugins=( */.claude-plugin/plugin.json )
-          [[ ${#plugins[@]} -gt 0 ]] || { echo "::error::no */.claude-plugin/plugin.json matched — layout/glob broke"; exit 1; }
+          plugins=( */.claude-plugin/plugin.json codex-plugins/*/.codex-plugin/plugin.json )
+          [[ ${#plugins[@]} -gt 0 ]] || { echo "::error::no plugin manifests matched — layout/glob broke"; exit 1; }
           rc=0
           for f in "${plugins[@]}"; do
             got=$(jq -r '.version' "$f")
@@ -46,7 +46,40 @@ jobs:
           got=$(jq -r '.metadata.version' "$mf")
           if [[ "$got" == "$VER" ]]; then echo "ok  $mf = $got"
           else echo "::error file=$mf::metadata.version '$got' != tag '$VER'"; rc=1; fi
-          [[ $rc -eq 0 ]] || { echo "::error::版本号与 tag 不一致——请用 scripts/release.sh 发版"; exit 1; }
+
+          cmf=.agents/plugins/marketplace.json
+          if [[ ! -f "$cmf" ]]; then
+            echo "::error file=$cmf::missing Codex marketplace"
+            rc=1
+          else
+            got=$(jq -r '.name // empty' "$cmf")
+            if [[ "$got" == "herbertgao-skills-codex" ]]; then echo "ok  $cmf name = $got"
+            else echo "::error file=$cmf::name '$got' != 'herbertgao-skills-codex'"; rc=1; fi
+            if [[ "$(jq '.plugins | length' "$cmf")" -eq 0 ]]; then
+              echo "::error file=$cmf::no Codex marketplace plugins"
+              rc=1
+            fi
+            while IFS= read -r entry; do
+              name=$(jq -r '.name // empty' <<<"$entry")
+              source=$(jq -r '.source.source // empty' <<<"$entry")
+              path=$(jq -r '.source.path // empty' <<<"$entry")
+              manifest="$path/.codex-plugin/plugin.json"
+              if [[ -z "$name" || "$source" != "local" || -z "$path" ]]; then
+                echo "::error file=$cmf::invalid Codex marketplace entry: $entry"
+                rc=1
+                continue
+              fi
+              if [[ ! -f "$manifest" ]]; then
+                echo "::error file=$cmf::entry '$name' points to missing manifest '$manifest'"
+                rc=1
+                continue
+              fi
+              manifest_name=$(jq -r '.name // empty' "$manifest")
+              if [[ "$manifest_name" == "$name" ]]; then echo "ok  $cmf entry $name -> $manifest"
+              else echo "::error file=$manifest::name '$manifest_name' != marketplace entry '$name'"; rc=1; fi
+            done < <(jq -c '.plugins[]' "$cmf")
+          fi
+          [[ $rc -eq 0 ]] || { echo "::error::release manifest verification failed — please fix and rerun scripts/release.sh"; exit 1; }
 
       - name: Build draft notes
         shell: bash

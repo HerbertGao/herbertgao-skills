@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenSpec Apply Subagent"
+  short_description: "OpenSpec apply orchestration"
+  default_prompt: "Use $openspec-apply-change-subagent for this OpenSpec change."

@@ -1,0 +1,34 @@
+{
+  "name": "opsx",
+  "version": "2026.6.13",
+  "description": "Codex port of the orchestrated OpenSpec apply workflow using Codex subagents and openspec-cn.",
+  "author": {
+    "name": "HerbertGao",
+    "url": "https://github.com/HerbertGao"
+  },
+  "homepage": "https://github.com/HerbertGao/herbertgao-skills",
+  "repository": "https://github.com/HerbertGao/herbertgao-skills",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skill",
+    "openspec",
+    "subagents",
+    "orchestration"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "opsx",
+    "shortDescription": "OpenSpec apply with Codex subagents.",
+    "longDescription": "Apply OpenSpec changes by grouping pending tasks by scope, delegating implementation to Codex subagents, and keeping the main agent focused on OpenSpec state management and review.",
+    "developerName": "HerbertGao",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use $openspec-apply-change-subagent for this OpenSpec change."
+    ]
+  }
+}

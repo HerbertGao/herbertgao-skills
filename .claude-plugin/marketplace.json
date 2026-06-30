@@ -1,18 +1,18 @@
 {
-  "name": "claude-skills",
+  "name": "herbertgao-skills",
   "owner": {
     "name": "HerbertGao",
     "url": "https://github.com/HerbertGao"
   },
   "metadata": {
-    "description": "HerbertGao's self-hosted Claude Code skills marketplace.",
-    "version": "2026.6.12"
+    "description": "HerbertGao's self-hosted AI coding skills marketplace.",
+    "version": "2026.6.13"
   },
   "plugins": [
     {
       "name": "review-loop",
       "source": "./review-loop",
-      "description": "Adversarial review loop — runs Codex + Code Reviewer + Reality Checker in parallel over your proposal and diff, merges/triages findings, dispatches minimal fixes, and re-reviews until pass (APPROVE/CLEAR) or a configurable round cap."
+      "description": "Adversarial review loop for Claude Code — runs Codex rescue + Code Reviewer + Reality Checker in parallel over your proposal and diff, merges/triages findings, dispatches minimal fixes, and re-reviews until pass or cap."
     },
     {
       "name": "opsx",

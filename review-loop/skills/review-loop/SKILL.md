@@ -1,6 +1,29 @@
 ---
 name: review-loop
-description: Adversarially review this proposal + code change and auto-iterate to a pass. Each round dispatches three reviewers in parallel (Codex via codex:codex-rescue + Code Reviewer + Reality Checker failure-enumeration), merges/dedups findings into one triage list, dispatches Minimal Change Engineer to fix by default, re-reviews, and loops until pass (APPROVE/CLEAR, or APPROVE-DEGRADED under weak reconciliation / structural Codex absence) or a round cap (default 10, optional under /goal). Optionally augments domain/method specialists per change domain (findings-only); mechanically escalates a Codex not-run to structural after K consecutive rounds to avoid a /goal deadlock. With full requirement context, raises a scope fence: a fix that crosses the agreed scope for robustness reasons (adding features/config/subsystems the user didn't ask for) pauses to ask the user instead of self-implementing. Also runs a standing simplicity counter-pressure (ponytail lens, §1e): a findings-only subtractive pass flagging over-engineering/bloat the loop's own fixes accrue (delete/stdlib/native/yagni/shrink + net-lines), subordinate to correctness — a guard tied to a §1b verified-safe failure row is never deleted — so the loop also keeps its own fixes lazy (§3 ponytail ladder) and advisorily flags accrued bloat (§1e, report-only `net: -N`), countering the insert-only ratchet without auto-removing code. Triggers when the user says 「对本次提案/变更做对抗性 review 循环」「用 Codex 对本次变更 review 循环」「review 到通过为止」「避免 review 插入过多无效代码」(run an adversarial review loop on this change / review until it passes, flagging bloat the loop accrues); often paired with the built-in /goal command.
+description: >-
+  Adversarially review this proposal + code change and auto-iterate to a pass.
+  Each round dispatches three reviewers in parallel (Codex via
+  codex:codex-rescue + Code Reviewer + Reality Checker failure-enumeration),
+  merges/dedups findings into one triage list, dispatches Minimal Change
+  Engineer to fix by default, re-reviews, and loops until pass (APPROVE/CLEAR,
+  or APPROVE-DEGRADED under weak reconciliation / structural Codex absence) or
+  a round cap (default 10, optional under /goal). Optionally augments
+  domain/method specialists per change domain (findings-only); mechanically
+  escalates a Codex not-run to structural after K consecutive rounds to avoid a
+  /goal deadlock. With full requirement context, raises a scope fence: a fix
+  that crosses the agreed scope for robustness reasons (adding
+  features/config/subsystems the user didn't ask for) pauses to ask the user
+  instead of self-implementing. Also runs a standing simplicity
+  counter-pressure (ponytail lens, §1e): a findings-only subtractive pass
+  flagging over-engineering/bloat the loop's own fixes accrue
+  (delete/stdlib/native/yagni/shrink + net-lines), subordinate to correctness —
+  a guard tied to a §1b verified-safe failure row is never deleted — so the loop
+  also keeps its own fixes lazy (§3 ponytail ladder) and advisorily flags
+  accrued bloat (§1e, report-only `net: -N`), countering the insert-only ratchet
+  without auto-removing code. Triggers when the user says
+  「对本次提案/变更做对抗性 review 循环」「用 Codex 对本次变更 review 循环」「review 到通过为止」「避免 review 插入过多无效代码」(run an
+  adversarial review loop on this change / review until it passes, flagging
+  bloat the loop accrues); often paired with the built-in /goal command.
 ---
 
 # review-loop

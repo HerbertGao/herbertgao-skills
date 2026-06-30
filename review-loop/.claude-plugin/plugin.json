@@ -1,13 +1,13 @@
 {
   "name": "review-loop",
-  "version": "2026.6.12",
+  "version": "2026.6.13",
   "description": "Adversarial review loop that iterates your proposal and diff to a clean pass — parallel Codex + Code Reviewer + Reality Checker review, merge/triage, minimal-change fixes, re-review until APPROVE/CLEAR or a configurable round cap. Optionally augments domain/method specialists per change (findings-only, no extra gate slot, never unlocks a clean APPROVE or offsets Codex absence); mechanically escalates a persistently-absent Codex to structural so /goal cannot dead-loop.",
   "author": {
     "name": "HerbertGao",
     "url": "https://github.com/HerbertGao"
   },
-  "homepage": "https://github.com/HerbertGao/claude-skills",
-  "repository": "https://github.com/HerbertGao/claude-skills",
+  "homepage": "https://github.com/HerbertGao/herbertgao-skills",
+  "repository": "https://github.com/HerbertGao/herbertgao-skills",
   "license": "MIT",
   "keywords": [
     "claude-code",

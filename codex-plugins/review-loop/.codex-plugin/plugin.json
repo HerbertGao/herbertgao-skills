@@ -1,0 +1,34 @@
+{
+  "name": "review-loop",
+  "version": "2026.6.13",
+  "description": "Codex port of the adversarial review loop workflow using Codex subagents and agency-agents custom agents when installed.",
+  "author": {
+    "name": "HerbertGao",
+    "url": "https://github.com/HerbertGao"
+  },
+  "homepage": "https://github.com/HerbertGao/herbertgao-skills",
+  "repository": "https://github.com/HerbertGao/herbertgao-skills",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skill",
+    "code-review",
+    "adversarial-review",
+    "subagents"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Review Loop",
+    "shortDescription": "Iterative adversarial review loop for Codex.",
+    "longDescription": "Run an adversarial review and fix loop over the current proposal and code change. The Codex port delegates review and fixes through Codex subagents and agency-agents custom agents when available.",
+    "developerName": "HerbertGao",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use $review-loop to review this change until it passes."
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sync every plugin manifest + the root marketplace manifest to one repo-wide version.
 # Single source of truth for "所有版本号" — add a plugin and it's picked up automatically
-# (any */.claude-plugin/plugin.json). jq is format-preserving: only the version line changes.
+# (Claude and Codex plugin manifests). jq is format-preserving: only the version line changes.
 #
 # Two-phase / atomic: render every manifest into a temp dir first; only if ALL jq succeed
 # are originals overwritten — a mid-list jq failure changes nothing (no half-synced tree).
@@ -23,9 +23,9 @@ command -v jq >/dev/null 2>&1 || die "jq not found (install jq)"
 
 # targets: "<file>\t<jq filter>"  — every plugin .version + root marketplace .metadata.version
 targets=()
-for f in */.claude-plugin/plugin.json; do targets+=("$f"$'\t'".version = \$v"); done
+for f in */.claude-plugin/plugin.json codex-plugins/*/.codex-plugin/plugin.json; do targets+=("$f"$'\t'".version = \$v"); done
 [[ -f .claude-plugin/marketplace.json ]] && targets+=(".claude-plugin/marketplace.json"$'\t'".metadata.version = \$v")
-[[ ${#targets[@]} -gt 0 ]] || die "no manifests found (*/.claude-plugin/plugin.json) — wrong layout?"
+[[ ${#targets[@]} -gt 0 ]] || die "no manifests found — wrong layout?"
 
 work="$(mktemp -d)" || die "mktemp failed"
 trap 'rm -rf "$work"' EXIT
