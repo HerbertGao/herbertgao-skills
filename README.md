@@ -1,10 +1,10 @@
 # herbertgao-skills
 
-HerbertGao 的自托管 AI coding skills 仓库。主线保留 Claude Code plugin marketplace，同时提供 Codex 与 OpenCode 的平台适配版，避免把 Claude/Codex/OpenCode 的 subagent 调用语义混在一起。
+HerbertGao 的自托管 AI coding skills 仓库。两条安装线：Claude Code 走 plugin marketplace（保留 `codex:codex-rescue` / `subagent_type` 等 Claude 专属调用）；其它平台走 `npx skills add` 装通用版。
 
 ## 安装
 
-### Claude Code
+### Claude Code — plugin marketplace
 
 ```text
 /plugin marketplace add HerbertGao/herbertgao-skills
@@ -12,33 +12,24 @@ HerbertGao 的自托管 AI coding skills 仓库。主线保留 Claude Code plugi
 /plugin install opsx@herbertgao-skills
 ```
 
-更新：`/plugin marketplace update herbertgao-skills` 后重装对应 plugin。
+更新：`/plugin marketplace update herbertgao-skills` 后重装。若装过旧 marketplace，先 `/plugin marketplace remove claude-skills`。
 
-如果你已安装旧 marketplace，先移除旧入口后再添加新入口：
+> `opsx` 需要 `openspec-cn` CLI（plugin 不附带，自行安装）。
 
-```text
-/plugin marketplace remove claude-skills
-```
+### 其它平台（OpenCode / Codex / Trae / Cursor …）— `npx skills add`
 
-> 注：`opsx` 需要 `openspec-cn` CLI（plugin 不附带，请自行安装）。若你此前已在 `~/.claude` 手动放过同名 command/skill，安装本 plugin 会产生重复，二选一即可。
-
-### Codex
-
-Codex 版放在 [`codex-plugins/`](./codex-plugins)，并通过 repo-local marketplace 暴露：
-
-```text
-.agents/plugins/marketplace.json
-```
-
-本地开发时，从仓根显式添加 marketplace 并安装：
+通用版 skill 在 [`skills/`](./skills)，平台中立，用 [Vercel Labs 的 `skills` CLI](https://github.com/vercel-labs/skills) 安装：
 
 ```bash
-codex plugin marketplace add .
-codex plugin add review-loop@herbertgao-skills-codex
-codex plugin add opsx@herbertgao-skills-codex
+npx skills add HerbertGao/herbertgao-skills --list          # 列出可装 skills
+npx skills add HerbertGao/herbertgao-skills                 # 装到自动检测的 agent
+npx skills add HerbertGao/herbertgao-skills --agent opencode
+npx skills add HerbertGao/herbertgao-skills --agent codex
 ```
 
-从 GitHub 安装时：
+通用版不调 `codex:codex-rescue`、不用 Claude `subagent_type`，第三审查槽为平台中立的 `Independent Reviewer`；解析规则与四层 fallback 见各 SKILL.md 的 `Platform Adapter` 章节。可选装 [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents) 作为一级来源（质量增强，非硬依赖）。
+
+Codex 亦可走原生 marketplace（`codex-plugins/` 下 `SKILL.md` 是通用版的副本，随 `skills/` 同步，附 `agents/openai.yaml` 入口壳）：
 
 ```bash
 codex plugin marketplace add HerbertGao/herbertgao-skills --ref main
@@ -46,79 +37,28 @@ codex plugin add review-loop@herbertgao-skills-codex
 codex plugin add opsx@herbertgao-skills-codex
 ```
 
-Codex 版使用 Codex 自己的 subagent/custom agent 机制。若已按 `msitarzewski/agency-agents` 安装 custom agents，会使用 `Code Reviewer`、`Reality Checker`、`Minimal Change Engineer`；否则降级为 Codex worker/default subagent 加内嵌角色 prompt。
-
-### OpenCode
-
-OpenCode 版放在 [`.opencode/`](./.opencode)：
-
-```text
-.opencode/
-├─ commands/
-│  ├─ opsx-apply-subagent.md
-│  └─ review-loop.md
-└─ skills/
-   ├─ openspec-apply-change-subagent/
-   └─ review-loop/
-```
-
-把这些文件复制到目标项目的 `.opencode/` 或全局 `~/.config/opencode/` 后使用。OpenCode 版使用 OpenCode 自己的 `mode: subagent` agents，例如 `@engineering-code-reviewer`、`@testing-reality-checker`、`@engineering-minimal-change-engineer`。这些 `@...` agents 来自 `msitarzewski/agency-agents` 的 OpenCode 安装结果，通常位于 `~/.config/opencode/agents/`；若未安装，Skill 会降级为 generic OpenCode subagent/fallback。它不会调用 Codex subagent，也不会使用 `codex:codex-rescue`。
-
 ## 收录的 skill
 
-| Skill | Claude Code | Codex | OpenCode |
-| --- | --- | --- | --- |
-| `review-loop` | [`review-loop/skills/review-loop/SKILL.md`](./review-loop/skills/review-loop/SKILL.md)：Claude Agent tool + `subagent_type`，保留原 Codex rescue lane。 | [`codex-plugins/review-loop/skills/review-loop/SKILL.md`](./codex-plugins/review-loop/skills/review-loop/SKILL.md)：Codex subagents/custom agents；第三审查槽改为平台中立 `Independent Reviewer`。 | [`.opencode/skills/review-loop/SKILL.md`](./.opencode/skills/review-loop/SKILL.md)：OpenCode `@...` subagents；不调用 Codex。 |
-| `opsx` | [`opsx/skills/openspec-apply-change-subagent/SKILL.md`](./opsx/skills/openspec-apply-change-subagent/SKILL.md)：Claude Agent tool + `general-purpose`。 | [`codex-plugins/opsx/skills/openspec-apply-change-subagent/SKILL.md`](./codex-plugins/opsx/skills/openspec-apply-change-subagent/SKILL.md)：Codex worker/custom agents。 | [`.opencode/skills/openspec-apply-change-subagent/SKILL.md`](./.opencode/skills/openspec-apply-change-subagent/SKILL.md)：OpenCode `@engineering-*` subagents。 |
+| Skill | Claude Code（plugin） | 通用版（`npx skills add`） |
+| --- | --- | --- |
+| `review-loop` | [`review-loop/…/SKILL.md`](./review-loop/skills/review-loop/SKILL.md)：`subagent_type` + Codex rescue lane。 | [`skills/review-loop/SKILL.md`](./skills/review-loop/SKILL.md)：平台中立，`Independent Reviewer` + 逻辑角色名 + 四层 fallback。 |
+| `opsx`（npx skill 名 `openspec-apply-change-subagent`） | [`opsx/…/SKILL.md`](./opsx/skills/openspec-apply-change-subagent/SKILL.md)：`general-purpose`。 | [`skills/openspec-apply-change-subagent/SKILL.md`](./skills/openspec-apply-change-subagent/SKILL.md)：平台中立，`slugify(name)` + 四层 fallback。 |
 
 ## 结构
 
 ```text
 herbertgao-skills/
-├─ .claude-plugin/
-│  └─ marketplace.json        # marketplace 清单
-├─ review-loop/               # 一个 plugin（纯 skill）
-│  ├─ .claude-plugin/
-│  │  └─ plugin.json          # plugin 清单
-│  └─ skills/
-│     └─ review-loop/
-│        └─ SKILL.md          # skill 本体（SOT）
-├─ opsx/                      # Claude Code plugin（命令 + skill）
-│  ├─ .claude-plugin/
-│  │  └─ plugin.json
-│  ├─ commands/
-│  │  └─ apply-subagent.md
-│  └─ skills/
-│     └─ openspec-apply-change-subagent/
-│        └─ SKILL.md
-├─ codex-plugins/             # Codex plugin ports
-│  ├─ review-loop/
-│  │  ├─ .codex-plugin/
-│  │  └─ skills/
-│  └─ opsx/
-│     ├─ .codex-plugin/
-│     └─ skills/
-├─ .agents/
-│  └─ plugins/
-│     └─ marketplace.json     # Codex repo-local marketplace
-└─ .opencode/                 # OpenCode project/global-copyable ports
-   ├─ commands/
-   └─ skills/
+├─ .claude-plugin/marketplace.json   # Claude Code marketplace
+├─ review-loop/ · opsx/              # Claude Code plugin（SOT，含 codex:codex-rescue）
+├─ skills/                           # 通用版 SOT（npx skills add 安装源）
+│  ├─ review-loop/SKILL.md
+│  └─ openspec-apply-change-subagent/SKILL.md
+├─ codex-plugins/                    # Codex 原生入口：SKILL.md 为 skills/ 的副本，附 agents/openai.yaml
+├─ .agents/plugins/marketplace.json  # Codex repo-local marketplace
+└─ scripts/                          # 发布/同步脚本
 ```
 
-Claude 原版新增 skill：在仓根加一个同构的 `<plugin>/` 目录，并在 `.claude-plugin/marketplace.json` 的 `plugins[]` 追加一条。
-
-Codex 新增 skill：优先在 `codex-plugins/<plugin>/skills/<skill>/SKILL.md` 添加平台适配版，并在 `.agents/plugins/marketplace.json` 增加 marketplace entry。
-
-OpenCode 新增 skill：在 `.opencode/skills/<skill>/SKILL.md` 添加平台适配版；需要 slash command 时放到 `.opencode/commands/`。
-
-## Subagent 适配原则
-
-- Claude Code：可以使用 Claude 的 `Agent tool` / `Task tool` / `subagent_type`。
-- Codex：只使用 Codex subagent/custom agent；不使用 OpenCode `@` slugs，也不使用 Claude `subagent_type`。
-- OpenCode：只使用 OpenCode `mode: subagent` agents 和 `@slug` 调用；不调用 Codex subagent，也不使用 `codex:codex-rescue`。
-
-原 `review-loop` 的 Claude 版第三审查槽叫 Codex；Codex/OpenCode 适配版统一改成平台中立的 `Independent Reviewer`。
+新增 skill：Claude 版加 `<plugin>/` 目录并在 `.claude-plugin/marketplace.json` 追加一条；通用版加 `skills/<skill>/SKILL.md`，需要 Codex 原生入口时把该 `SKILL.md` 拷一份到 `codex-plugins/<plugin>/skills/<skill>/`（与 `skills/` 保持同步）并保留 `agents/openai.yaml`。
 
 ## License
 
