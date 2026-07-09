@@ -68,6 +68,7 @@ Echo the resolved tier for each lane in the round status (see step 4 for the for
 - Do not use Claude Code `Agent tool`, `Task tool`, or `subagent_type`.
 - Do not use `codex:codex-rescue` (it is a Claude-hosted bridge, not a standalone agent).
 - Keep the third review lane platform-neutral. Call it `Independent Reviewer`, never a platform name.
+- **"Generic subagent"** (used by tiers 2–4, the Independent Reviewer, and every as-persona augment) = a worker with no preset persona into which you inject the role prompt. Resolve it per platform — **do not assume a Claude-Code name like `general-purpose` exists elsewhere** (OpenCode, Trae, and others may have no such agent): Claude Code → the `general-purpose` agent; a tool with a default/unnamed worker → dispatch it with the persona as its instructions; a tool with subagents but no generic type → spawn a fresh isolated task and inject the persona; no subagent capability at all → run the persona as a fresh review pass in a clean, separate context.
 
 ## Severity and Verdicts
 
@@ -101,6 +102,7 @@ Normalize verdicts as follows:
    - **Code Reviewer**: correctness, contracts, security, consistency, and tests. Require a guard/check checklist with `file:line` entries and, for any set-like dimension, `declared-coverage set | actually-effective set | equal?`.
    - **Reality Checker**: failure enumeration. Require guard/branch/assert/state-transition/claimed-pass rows with `file:line`, failing inputs, observed behavior, contract claim, and terminal state.
    - **Independent Reviewer**: fresh adversarial review over the same truth sources. Always a generic subagent with a fresh adversarial prompt — no agency-agents mapping. Do not call this lane by a platform name.
+   - **Optional adaptive augmentation**: add domain/method specialists per change domain — see *Adaptive augmentation* below (findings-only, takes no lane slot).
 
 4. Echo this status block every round:
 
@@ -117,7 +119,7 @@ Simplicity: <lean|net -N flagged | over-eng: K open|no code this round, skip>
    - Fix in-scope `blocker` and `major` findings by default.
    - Fix `minor` only when cheap and low risk; usually skip `nit`.
    - Treat over-engineering findings as advisory unless they create a correctness or contract problem.
-   - Optional security augmentation: dispatch `Application Security Engineer` as a findings-only lane (takes no slot, holds no verdict), resolved via the same four-tier fallback.
+   - Optional security augmentation: dispatch `Application Security Engineer` as a findings-only lane (takes no slot, holds no verdict), resolved via the four-tier fallback — a registry lane whose embedded tier is the security exception to *Adaptive augmentation*'s no-embedded rule below.
 
 6. Dispatch fixes (resolve `Minimal Change Engineer` via the four-tier fallback):
    - **Registered** → dispatch the installed `Minimal Change Engineer` directly.
@@ -130,6 +132,16 @@ Simplicity: <lean|net -N flagged | over-eng: K open|no code this round, skip>
 7. Re-review:
    - Return to step 1 on the latest diff.
    - Do not terminate just because a subagent wrote a pass token. Terminate only after main-agent normalization and the pass gate.
+
+## Adaptive augmentation (optional, findings-only, no slot)
+
+Beyond the three lanes, add domain or method specialists when the change warrants — but only on a **new distribution**, never a clone of a lane already running.
+
+- **Two free axes**: a **knowledge** specialist (named domain knowledge the three lanes lack — reentrancy, WCAG contrast, query-plan pathology, RTOS timing…) or a **method** lens (a clearly different approach — structural design, threat modeling, forward-fragility), not another generic semantic reviewer.
+- **Trigger pre-pass** (before dispatch, leave an auditable matrix): scan `changed-file globs × content greps × subject` → matched domain → named gap/lens → **resolvable specialist?** → dispatch / skip + reason. Examples: `*.sol`·`delegatecall`→Blockchain Security Auditor; DB migration→Database Optimizer; ARIA→Accessibility Auditor; CI/IaC→DevOps Automator; design text→Software Architect. `Application Security Engineer` is the security instance.
+- **Three gates (all hold)**: ① you can name the new distribution ("frontend-related" does not count); ② the domain is actually touched by this change (matrix hit, not "maybe"); ③ it **resolves to exactly one real specialist agent**. The pre-pass already names the specialist (e.g. *Accessibility Auditor*, *Database Optimizer*), so resolve by that **name**: **primary** — a depth-agnostic filename match `find ~/.agency-agents -type f -name '*<name-slug>*.md'` (agents nest up to two levels, e.g. `game-development/unity/unity-architect.md`); **fallback for a sub-concept with no filename hit** (e.g. `reentrancy`) — a whole-body `grep -ril "<term>" ~/.agency-agents --include="*.md"` used **only as a candidate generator**. In **both** paths the safety is the same **mandatory confirm**: read each candidate's frontmatter `name:`, confirm its role IS the domain, drop non-agent docs (`README`/`CONTRIBUTING`/`*.json`), and resolve to **exactly one** agent (>1 → disambiguate by division dir; 0 confirmed → SKIP) — then embed its body (skip the YAML frontmatter) as the persona of a generic subagent. Confirming frontmatter, **not** banning body-grep, is what rejects README/decoys. **No registration and no single confirmed catalog agent ⇒ SKIP** — never blind-embed a non-agent doc or a wrong-division decoy, never a personaless generic clone (a ≈0-value fourth reviewer); an open-ended augment has no embedded fallback and no derivable jsDelivr path, so it needs the local catalog clone.
+- **Findings-only**: augmentation produces findings into triage only — takes no lane slot, holds no verdict, never displaces the three lanes.
+- **Echo** on the `Augment:` status line: each added specialist with its resolution tier — `[registered]`/`[local]` (`[fetched]` is fixed-lanes-only; an open-ended augment is `[local]` or SKIP), e.g. `Augment: +Blockchain Security Auditor(knowledge:reentrancy)[local] | migrations→Database Optimizer[registered]`; `Augment: none` if none. A matrix hit whose expert is **unavailable — neither registered nor in the catalog** — is disclosed as an advisory suffix `(<domain>: expert unavailable, generic coverage only)` on the terminal token (the portable variant states this but has no evaluator predicate to enforce it); a catalog-resolved (as-persona) or registered expert is full coverage and needs no suffix.
 
 ## Pass Gate
 
