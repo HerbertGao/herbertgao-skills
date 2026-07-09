@@ -1,6 +1,6 @@
 {
   "name": "review-loop",
-  "version": "2026.7.0",
+  "version": "2026.7.1",
   "description": "Codex port of the adversarial review loop workflow using Codex subagents and agency-agents custom agents when installed.",
   "author": {
     "name": "HerbertGao",
