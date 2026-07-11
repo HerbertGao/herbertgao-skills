@@ -5,10 +5,9 @@ license: MIT
 compatibility: 需要 openspec-cn CLI。
 metadata:
   author: openspec
-  version: "2.0-custom"
-  generatedBy: "1.3.1"
-  basedOn: "openspec-apply-change (1.3.1)"
-  customization: "主 agent 编排；按范围分组，每组派 subagent 开发；主 agent 只做 OpenSpec 状态管理与 review。作为独立 skill 并存，不覆盖原版。"
+  generatedBy: "1.6.0"
+  basedOn: "openspec-apply-change (1.6.0)"
+  customization: "相对原版 apply（主 agent 逐任务循环实现），改为主 agent 编排：按范围分组、每组派 subagent 实现并 review。"
 ---
 
 实现 OpenSpec 变更中的任务。
@@ -22,6 +21,8 @@ metadata:
 - 主 agent 只在做极小的状态/标记修正时才直接动文件；任何成规模的编码都必须下放给 subagent。
 
 **输入**：可选指定变更名称。如果省略，检查是否可以从对话上下文中推断。如果模糊或不明确，你**必须**提示获取可用变更。
+
+**Store 选择**：如果用户指定了某个 Store（在本机注册的独立 OpenSpec 仓库），或工作位于某个 Store 中，先运行 `openspec-cn store list --json` 查到 Store ID，然后在读写规范/变更的命令上带 `--store <id>`（`list`、`status`、`instructions`、`archive` 等）。本编排版的所有 `openspec-cn` 调用都由主 agent 发出，故 `--store <id>` 只需主 agent 携带，subagent 不跑这些命令。未指定 Store 时对最近的本地 `openspec/` 根目录生效。
 
 **步骤**
 

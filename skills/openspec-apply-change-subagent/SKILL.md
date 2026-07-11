@@ -68,6 +68,10 @@ Note the resolved tier for each group in the progress report (Workflow step 7). 
 - Do not use `codex:codex-rescue` (it is a Claude-hosted bridge, not a standalone agent).
 - Dispatch all dependency-ready groups in parallel when the runtime supports it; otherwise run waves serially preserving dependency order.
 
+## Store selection
+
+If the user targets a registered Store (a separate OpenSpec repo registered on this machine) or work lives inside one, run `openspec-cn store list --json` to find the Store ID, then pass `--store <id>` on read/write commands (`list`, `status`, `instructions`, `archive`, etc.). Only the orchestrator runs these commands, so only it carries `--store <id>`; subagents do not. Without a Store, commands target the nearest local `openspec/` root.
+
 ## Inputs
 
 The user may provide a change name. If omitted:
