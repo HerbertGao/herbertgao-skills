@@ -55,6 +55,65 @@ validate_codex_marketplace() {
     manifest_name="$(jq -r '.name // empty' "$manifest")"
     [[ "$manifest_name" == "$name" ]] || die "$manifest name '$manifest_name' != marketplace entry '$name'"
   done < <(jq -c '.plugins[]' "$mf")
+
+  # reverse: every codex-plugins/<dir> must be registered, or it silently ships uninstallable
+  local d
+  for d in codex-plugins/*/; do
+    jq -e --arg p "./${d%/}" '.plugins[] | select(.source.path == $p)' "$mf" >/dev/null \
+      || die "$mf missing entry for $d"
+  done
+
+  # same asymmetry on the Claude side: a <plugin>/ dir absent from the Claude marketplace
+  # version-bumps, passes CI, and ships un-installable via /plugin install.
+  local cmf=".claude-plugin/marketplace.json" p dirs=( */.claude-plugin/ )
+  # fail closed: nullglob would silently run zero checks if the layout broke
+  [[ ${#dirs[@]} -gt 0 ]] || die "no Claude plugin dirs matched */.claude-plugin/ — layout/glob broke"
+  for d in "${dirs[@]}"; do
+    p="${d%/.claude-plugin/}"
+    jq -e --arg s "./$p" '.plugins[] | select(.source == $s)' "$cmf" >/dev/null \
+      || die "$cmf missing entry for $p"
+  done
+
+  # forward, Claude side: every entry must point at a real manifest whose name matches
+  local csrc cname
+  while IFS= read -r entry; do
+    cname="$(jq -r '.name // empty' <<<"$entry")"
+    csrc="$(jq -r '.source // empty' <<<"$entry")"
+    [[ -n "$cname" && -n "$csrc" ]] || die "$cmf has an entry without name/source"
+    [[ -f "$csrc/.claude-plugin/plugin.json" ]] \
+      || die "$cmf entry '$cname' points to missing manifest: $csrc/.claude-plugin/plugin.json"
+    [[ "$(jq -r '.name // empty' "$csrc/.claude-plugin/plugin.json")" == "$cname" ]] \
+      || die "$csrc/.claude-plugin/plugin.json name != marketplace entry '$cname'"
+  done < <(jq -c '.plugins[]' "$cmf")
+
+  # README declares per-skill pairing: every universal skill ships a byte-identical Codex copy,
+  # and every Codex skill dir is a COMPLETE pair (SKILL.md + agents/openai.yaml) backed by a
+  # universal source. Every glob fails closed — a paired deletion (source + copy together) must
+  # die too, not slip through zero loop iterations.
+  local srcs=( skills/*/SKILL.md ) s t twins p
+  [[ ${#srcs[@]} -gt 0 ]] || die "no universal skills matched skills/*/SKILL.md — layout/glob broke"
+  for s in "${srcs[@]}"; do
+    twins=( codex-plugins/*/"$s" )
+    [[ ${#twins[@]} -gt 0 ]] || die "no Codex twin found for $s — every skills/*/SKILL.md needs one"
+    for t in "${twins[@]}"; do
+      cmp -s "$s" "$t" || die "twin drift: $t is not a byte-copy of $s — re-sync before releasing"
+    done
+  done
+  # every Codex skill dir: complete pair, backed by a universal source
+  for t in codex-plugins/*/skills/*/; do
+    [[ -f "${t}SKILL.md" ]] || die "Codex skill missing its SKILL.md: $t"
+    [[ -f "${t}agents/openai.yaml" ]] || die "Codex skill missing its agents/openai.yaml: $t"
+    s="skills/$(basename "$t")/SKILL.md"
+    [[ -f "$s" ]] || die "orphan Codex skill: $t has no $s to copy from"
+  done
+  # every Codex plugin ships at least one skill; every Claude plugin ships its skill
+  for d in codex-plugins/*/; do
+    compgen -G "${d}skills/*/SKILL.md" >/dev/null || die "$d ships no skill (no skills/*/SKILL.md)"
+  done
+  for d in "${dirs[@]}"; do
+    p="${d%/.claude-plugin/}"
+    compgen -G "$p/skills/*/SKILL.md" >/dev/null || die "$p has no skills/*/SKILL.md — the skill itself is missing"
+  done
 }
 
 if [[ "$mode" == "--dry-run" ]]; then

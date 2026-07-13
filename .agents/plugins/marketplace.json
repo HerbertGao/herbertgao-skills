@@ -17,6 +17,18 @@
       "category": "Productivity"
     },
     {
+      "name": "council",
+      "source": {
+        "source": "local",
+        "path": "./codex-plugins/council"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "opsx",
       "source": {
         "source": "local",
