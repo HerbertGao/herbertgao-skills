@@ -1,0 +1,4 @@
+interface:
+  display_name: "Council"
+  short_description: "Multi-perspective expert council"
+  default_prompt: "Use $council to weigh this decision from several expert perspectives."
