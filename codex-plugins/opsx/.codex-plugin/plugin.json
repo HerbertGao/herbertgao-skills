@@ -1,6 +1,6 @@
 {
   "name": "opsx",
-  "version": "2026.7.2",
+  "version": "2026.7.3",
   "description": "Codex port of the orchestrated OpenSpec apply workflow using Codex subagents and openspec-cn.",
   "author": {
     "name": "HerbertGao",

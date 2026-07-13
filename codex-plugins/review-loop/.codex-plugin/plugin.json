@@ -1,6 +1,6 @@
 {
   "name": "review-loop",
-  "version": "2026.7.2",
+  "version": "2026.7.3",
   "description": "Codex port of the adversarial review loop workflow using Codex subagents and agency-agents custom agents when installed. Includes the simplicity and cold-read legibility counter-pressures, so an iterated review neither bloats the code nor turns a spec into a patch pile only the loop can read. Works on anything already written — a proposal, a spec, or a diff, including pure prose; a decision with nothing written yet is council.",
   "author": {
     "name": "HerbertGao",
