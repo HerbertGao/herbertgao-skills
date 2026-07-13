@@ -111,7 +111,7 @@ find ~/.agency-agents -type f -name '*.md' \
 
 The exclusions are anchored to exact filenames, not prefixes — a prefix glob would delete the whole `security-*` division. Paste the output.
 
-Pick candidates per axis; read each frontmatter to confirm it *is* that axis. **Every seat, the DA and every cross-exam dispatch goes to `subagent_type: Explore`** — it has no `Agent`, no `Write`, no `Edit`, so the run's topology is the star A0 audits and a seat cannot be used as a proxy. `general-purpose` is for the auditor alone. Echo the seats; **the format is fixed** (the auditor parses it):
+Pick candidates per axis; read each frontmatter to confirm it *is* that axis. **Every seat, the DA and every cross-exam dispatch goes to `subagent_type: Explore`** — it has **no `Agent`**, so the run's topology is the star A0 audits and a seat cannot fan out. It does have `Bash`: **a seat can still write**, and nothing prevents it. A9's sidecar sweep is what catches it — that sweep is load-bearing, not belt-and-braces. `general-purpose` is for the auditor alone (it needs `Bash` too, and it needs `Agent` for nothing). Echo the seats; **the format is fixed** (the auditor parses it):
 
 ```text
 axis 1: considered <path-a>, <path-b> -> seated <path-a> (<one clause: why the other lost>)
@@ -258,25 +258,36 @@ Take the **first matching row**:
 
 Dispatch a **fresh-context** `general-purpose` worker (it needs Bash), taking the next `k`.
 
-**Payload:** `run nonce · workdir · the §1 seat echo · the pasted find output · the catalog rev`. **Nothing else.** Every prompt, worker type, model, tool call and return is in the session log — the file the moderator did not author. Handing you its re-narration would hand you the audited party's own account.
+**Payload:** `run nonce · workdir · candidate: <n> · the §1 seat echo · the catalog rev`. **Nothing else.** Every prompt, worker type, model, tool call and return is in the session log — the file the moderator did not author. Handing you its re-narration would hand you the audited party's own account. `candidate: <n>` is not optional: a human rejection rebuilds the record, so a run reaching `CONVERGED` after one has ≥2 — open `candidate-1.md` and you PASS the draft the moderator is *not* presenting. The `find` output is not in the payload either: you have `Bash` and the pinned rev — `git -C ~/.agency-agents ls-tree -r <rev> --name-only` is the same listing, one fewer moderator copy.
 
-**Bound the run on two platform-authored events:**
+**Bound the run on two platform-authored events, in ONE file:**
 
-- **its birth** — the `openssl rand -hex 4` tool-call record **whose output is this nonce**. Every dispatch in the run postdates it — which is what makes a replay impossible: an old run's records predate the new call.
-- **its end** — your own dispatch record. Absent ⇒ `FAIL (replay: this log did not dispatch me)`.
+- **its end** — **the log containing your own dispatch record.** That file, and only that file, is the window. Absent from every log ⇒ `FAIL: replay — this log did not dispatch me`.
+- **its birth** — the `openssl rand -hex 4` tool-call record **whose output is this nonce**, *in that same file*. Every dispatch in the run postdates it. Birth not in the file that dispatched you ⇒ `FAIL: replay`.
+
+**Do not "walk every log that mentions the nonce".** A replay produces exactly the signature such an accommodation is written for: the moderator re-declares an old run's nonce ⇒ birth event in the old file, your dispatch in the new one, both bounds "satisfied" — and a whole previous council sits inside the window, inherited by a moderator who dispatched nothing but you. (Measured: across 164 logs, every log has exactly one `sessionId`, equal to its filename. The accommodation buys nothing and opens the door.)
 
 **Enumerate first, never read the log whole.** These files reach megabytes.
 
 ```bash
-LOG=$(grep -l 'run: <nonce>' ~/.claude/projects/*/*.jsonl)   # >1 ⇒ a resumed session; walk all of them
+# the ONE log that dispatched you — not every log mentioning the nonce (see the replay note above)
+LOG=$(grep -l "$MY_OWN_TOOL_USE_ID" ~/.claude/projects/*/*.jsonl)
 python3 - "$LOG" <<'EOF'
-import json,sys,re,hashlib
+import json,sys,re,hashlib,os,glob
+LOG=sys.argv[1]; SIDE=LOG[:-6]+"/subagents"
 disp={}; res={}
-for line in open(sys.argv[1]):
+def tools(path,who):                      # a worker's tool calls live WITH THE WORKER
+    for line in open(path):
+        try: r=json.loads(line)
+        except: continue
+        for b in (r.get("message") or {}).get("content") or []:
+            if isinstance(b,dict) and b.get("type")=="tool_use" and b["name"] in ("Bash","Write","Edit","NotebookEdit"):
+                print("TOOL\t"+who+"\t"+b["name"]+"\t"+json.dumps(b.get("input") or {}))   # FULL input — a redirect sits anywhere
+for line in open(LOG):
     try: r=json.loads(line)
     except: continue
     t=r.get("toolUseResult")
-    if isinstance(t,dict) and r.get("message",{}).get("content"):
+    if isinstance(t,dict) and r.get("message",{}).get("content"):      # sometimes a bare string (an error) — guard it
         for b in r["message"]["content"]:
             if isinstance(b,dict) and b.get("type")=="tool_result":
                 res[b.get("tool_use_id")]=(t.get("agentId"), t.get("resolvedModel"))
@@ -287,15 +298,18 @@ for line in open(sys.argv[1]):
                 p=i.get("prompt") or ""
                 m=re.search(r'dispatch:\s*(\d+)',p); kk=m.group(1) if m else "?"
                 disp[b["id"]]=(kk, i.get("subagent_type"), hashlib.sha256(p.encode()).hexdigest()[:16], p.split("\n")[0])
-            elif b["name"] in ("Bash","Write","Edit","NotebookEdit"):
-                print("TOOL\t"+b["name"]+"\t"+json.dumps(i))          # FULL input — a redirect can sit anywhere
+tools(LOG,"moderator")
 for tid,(kk,st,dg,hdr) in disp.items():
     aid,mdl = res.get(tid,(None,None))
     print("\t".join(["DISPATCH",kk,tid,str(aid),str(st),str(mdl),dg,hdr]))
+    sc=f"{SIDE}/agent-{aid}.jsonl"
+    if aid and os.path.exists(sc): tools(sc,f"seat-k{kk}")             # <- the write-gate's ONLY enumeration path
 EOF
 ```
 
-`agentId` and `resolvedModel` live on the *result* record, joined by `tool_use_id` — a sweep that reads only the `tool_use` blocks recovers neither, and `toolUseResult` is sometimes a bare string (an error), so guard the index or the sweep aborts mid-file and silently truncates. Every check below reads that table plus targeted lookups. **Read a return by projection** — its canonical copy is `<LOG%.jsonl>/subagents/agent-<agentId>.jsonl`:
+`agentId` and `resolvedModel` live on the *result* record, joined by `tool_use_id` — a sweep that reads only the `tool_use` blocks recovers neither, and `toolUseResult` is sometimes a bare string (an error), so guard the index or the sweep aborts mid-file and silently truncates.
+
+**The sidecar loop is not an optimization — it is A9.** A seat goes to `Explore`, which has `Bash`, so a seat *can* write; and **a seat's tool calls are never in this log**, they are in its own `subagents/agent-<agentId>.jsonl`. Sweep the main log alone and every `TOOL` row you print is the moderator's — you would PASS the write-gate having never opened a single seat's tool calls. Every check below reads that table plus targeted lookups. **Read a return by projection** — its canonical copy is `<LOG%.jsonl>/subagents/agent-<agentId>.jsonl`:
 
 ```bash
 jq -rs 'map(select(.message.role=="assistant"))|last|.message.content[]|select(.type=="text")|.text' \
@@ -340,7 +354,12 @@ A3  Every fact: the criterion is quoted verbatim from a traced seat's "what woul
     platform's copy of that return** (moderator-authored, or lifted from a bare `[fact:]` locator ⇒ FAIL);
     `criterion-C<n>` precedes `artifact-C<n>` in the log's record order; re-run the command, or re-read the
     `file:line` and diff the quoted line — same ruling under the same criterion (bytes may differ for a
-    time-varying command; **a flipped truth value is a FAIL, not a tolerance**)
+    time-varying command; **a flipped truth value is a FAIL, not a tolerance**).
+    **`html.unescape()` BOTH SIDES before any diff here or in A5.** The moderator only ever saw the
+    `<task-notification>` copy, which is entity-escaped; the sidecar you read is raw. And the return contract
+    *mandates* angle brackets — `[fact: <file:line>]`, `threshold=<comparator+value+unit>` — so a criterion
+    quoted **faithfully** comes to you as `&gt;`, byte-mismatches the raw `>`, and you FAIL an honest run.
+    A byte-diff without this normalization fails the honest and catches no one.
 A4  Recompute, from the platform's copies of the returns: every crux's class; the three bins (a reason is
     contradicted ⇒ crux, asserted by all non-opposing ⇒ consensus, else ⇒ unopposed); **every `P` was
     asserted by EVERY compliant non-opposing round-1 seat — one seat short ⇒ it is an unopposed position, not
@@ -360,23 +379,38 @@ A8  Every §7 field is present (a dropped field is a FAIL, not a vacuous pass) a
     `dispatches` = non-audit dispatch records in the window; `retries`, `candidates` (= `ls
     workdir/candidate-*.md`), `rejected`, `rounds`, `concessions`, `non-compliant`, `seats`, `tie-breakers`,
     `seats-degraded`, `opposing`, `blind`, `DA`, `DA-final`, `value cruxes (asked/delegated/unasked)`, and
-    **`models`: strip any context-tier or date suffix from each dispatch's resolved model and count distinct
-    BASE models — two strings for one model would render `correlated no` and switch the disclosure off by
-    accident. `correlated yes` ⇔ `models 1`; a violation ⇒ FAIL**
+    **`models`: over the SEAT-FACING dispatches only** — seat / re-dispatch / cross-exam / DA / DA-final /
+    tie-breaker / label. **Exclude your own audit dispatch** (it goes to `general-purpose` while the seats go
+    to `Explore`, and two worker types routinely resolve to two models — counting yourself is exactly the
+    accident this check exists to prevent, one level up) **and any failed retry carrying no `resolvedModel`**
+    (a `None` counts as a second "model", so a flaky transport would flip the disclosure). Lowercase, strip
+    a context-tier suffix (`[1m]`, `[1M]`) and a trailing `-<8 digits>`, count distinct BASE models, and
+    **paste the raw→base mapping** so an over-count is visible. `correlated yes` ⇔ `models 1`; a violation ⇒ FAIL
 A9  `workdir` resolves from §0's echo **in the log** (payload ≠ echo ⇒ FAIL) and is not `/`, `$HOME`, or an
-    ancestor of the project root. The candidate has no line-initial terminal verdict and its **Status** reads
+    ancestor of the project root. The payload's `candidate: <n>` equals the candidate's `Candidate:` line
+    **and** the highest `n` in `ls workdir/candidate-*.md`; lower ⇒ FAIL (you were handed a rejected draft).
+    The candidate has no line-initial terminal verdict and its **Status** reads
     `<token withheld>`; `asked >= min(3, V)` against A4's `V`, and `V > 3` ⇒ the meta-question is in the log
     (with `asked == V` iff the human chose ①); every `AskUserQuestion` call carries a `questions` array of
-    length exactly 1;
-    **every `human-settled` choice equals the `AskUserQuestion` call's own `tool_result` in the log** — the
-    record's account of the human is checkable, so check it.
-    **The write-gate**, from the log's tool-call records in record order — **and from those of every dispatch
-    in the window, by reading each one's `subagents/agent-<agentId>.jsonl` — a worker's tool calls are
-    recorded with the worker, not with you**: between §0's
-    echo and now, a write tool naming a path outside `workdir`, or a shell command containing a redirect or a
-    mutating verb (`rm mv cp ln touch chmod sed -i tee dd git-commit git-add git-checkout apply_patch npm pip
-    make …`) targeting a path outside `workdir` ⇒ FAIL. `mkdir workdir` is the one exception §0 requires.
-    Everything else — `openssl`, the §3 artifact commands, `find`, `grep`, `git show` — is a read.
+    length exactly 1.
+    **The human's choice is NOT in the `AskUserQuestion` call's `toolUseResult`.** That object is a verbatim
+    echo of the moderator's own *input* — `{question, header, multiSelect, options}` — the options it offered,
+    never the one taken. Read it and you find the moderator's claimed label sitting in the list the moderator
+    wrote, and you pass: **the graded party would be producing the gate's evidence.** The human's answer is in
+    the *following* `user` record's `tool_result` content string:
+    `Your questions have been answered: "<question>"="<the chosen label>"`. **That string is the only evidence.**
+    A `human-settled` line that does not match it ⇒ FAIL.
+    **The write-gate.** A worker's tool calls are recorded **with the worker** — `subagents/agent-<agentId>.jsonl`
+    — **not in this log**. The enumeration above already opens each one; if you did not run its sidecar loop,
+    every `TOOL` row you have is the moderator's and **you have not checked the seats at all**. Seats go to
+    `Explore`, which **has `Bash`** — a seat *can* write (`> file`, `sed -i`), and this sweep is the only thing
+    that catches it. Between §0's echo and now: a write tool naming a path outside `workdir`, or a shell command
+    containing a redirect (`>`, `>>`, `| tee`) or a mutating verb (`rm mv cp ln touch chmod sed -i dd git commit
+    git add git checkout apply_patch`) targeting a path outside `workdir` ⇒ FAIL. `mkdir workdir` is the one
+    exception §0 requires. A command whose text appears verbatim on a `criterion-C<n>` / `artifact-C<n>` /
+    `consulted:` line **already in the log before it ran** is a §3 artifact command, not a write — including
+    `npm ls` / `pip show`, which a seat's ① routinely asks for. Everything else — `openssl`, `find`, `grep`,
+    `git show` — is a read.
 Answer each check. **A PASS must carry its evidence** — the enumeration rows, the stat output, the re-run
 command and output, both sides of a diff. **A PASS with no pasted evidence is a FAIL of that check.**
 Last line: `PASS` or `FAIL: <ids + evidence>`

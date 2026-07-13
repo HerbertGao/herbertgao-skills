@@ -52,7 +52,7 @@ So `CONVERGED` means **no fabrication was caught** — not "the conclusion is ri
 
 ## Platform Adapter
 
-- **The seat worker** = a fresh worker with no preset persona **and no ability to dispatch or write** — a seat that can fan out makes the dispatch count, the model census and the write-gate an accounting of the root's edges only, and a seat that can write can be used as a proxy for every rule §5 and A9 enforce against you. **A worker that inherits your context (a "fork") is never a seat**, and neither is any mechanism that *continues* an already-running worker — a continuation leaves no new dispatch record, so A0 reads it as a dispatch that never happened. No fresh, non-dispatching, non-writing worker ⇒ `STOPPED (cannot run blind)`.
+- **The seat worker** = a fresh worker with no preset persona, **no ability to dispatch**, and **every tool call it makes recorded in a per-worker record you can read** — a seat that can fan out makes the dispatch count, the model census and the write-gate an accounting of the root's edges only. **Not "cannot write": a worker with a shell can write** (`> file`, `sed -i`), and the read-only worker types real platforms ship have shells. Writes are therefore **not prevented — they are caught**, by A9's sweep of each worker's own record. That sweep is load-bearing, not belt-and-braces. **A worker that inherits your context (a "fork") is never a seat**, and neither is any mechanism that *continues* an already-running worker — a continuation leaves no new dispatch record, so A0 reads it as a dispatch that never happened. No fresh, non-dispatching worker whose tool calls are recorded ⇒ `STOPPED (cannot run blind)`.
 - **The auditor worker** = fresh context, with a shell (grep / stat / re-run / hash). None ⇒ `auditor cannot re-run` (§5).
 - **Session log** — the platform must write, per dispatch, a record you did not author, carrying the prompt, the worker type, the resolved model and **the return**. It must also record *your* tool calls with their outputs, and the seats' (if a seat can act at all). Supply §6 with: **the discovery command**, **the dispatch-record predicate**, **the enumeration command** (one row per dispatch: `k`, dispatch id, worker type, resolved model, prompt digest — parsed from the record, not truncated out of it), and **the return locator** (the platform's *one canonical* copy — **if it stores a return twice, the copies may differ in escaping, and the canonical one is the one the moderator never sees**). No canonical copy ⇒ `STOPPED (returns unverifiable)`: without it, A3/A4/A5 read what you typed, and this protocol's central guarantee is gone.
 - Ask the human through whatever single-question affordance exists; with none, print one question and stop.
@@ -86,7 +86,7 @@ The proposition goes **verbatim** to every seat; the dispatch prompt carries no 
 | no real experts: catalog unavailable | zero real experts (§1) | the verbatim `find` output; the message carries `git clone https://github.com/msitarzewski/agency-agents ~/.agency-agents` for the user to run and retry — **do not stop and wait for the clone** |
 | no real experts: none on the opposing axis | no catalog match on that axis (§1) | the `find` output + the candidates you read and why each fails the axis |
 | no real experts: a second axis has no match | a second seat would have to be synthesized (§1) | the two unmatched axes + the listing lines you searched + why each candidate fails each (the raw `find` output alone *misleads* here — it shows a healthy catalog) |
-| cannot run blind | no fresh, non-dispatching, non-writing worker (Platform Adapter) | the workers you do have and why each fails |
+| cannot run blind | no fresh, non-dispatching worker whose tool calls are recorded (Platform Adapter) | the workers you do have and why each fails |
 | returns unverifiable | the platform keeps no canonical copy of a return (Platform Adapter) | which record shapes you found and why none is canonical |
 | awaiting human | a §5 question or presentation got no answer | the question or candidate as presented. **A suspension, not an exit** — the platform holds the run, so a resumed session picks up from it, and **no timeout converts silence into consent** |
 
@@ -254,14 +254,18 @@ Take the **first matching row**:
 
 Dispatch a **fresh-context** worker with a shell, taking the next `k`.
 
-**Payload:** `run nonce · workdir · the §1 seat echo · the pasted find output · the catalog rev`. **Nothing else.** Every prompt, worker type, model, tool call and return is in the session log — the file the moderator did not author. Handing you its re-narration would hand you the audited party's own account.
+**Payload:** `run nonce · workdir · candidate: <n> · the §1 seat echo · the catalog rev`. **Nothing else.** Every prompt, worker type, model, tool call and return is in the session log — the file the moderator did not author. Handing you its re-narration would hand you the audited party's own account. `candidate: <n>` is not optional: a rejection rebuilds the record, so a run that reaches `CONVERGED` after one normally has ≥2 — an auditor that opens `candidate-1.md` PASSes the document the moderator is *not* presenting. The `find` output is *not* in the payload either: you have a shell and the pinned rev — `git -C ~/.agency-agents ls-tree -r <rev> --name-only` is the same listing, one fewer moderator copy.
 
-**Bound the run on two platform-authored events:**
+**Bound the run on two platform-authored events, in ONE file:**
 
-- **its birth** — the `openssl rand -hex 4` tool-call record **whose output is this nonce**. Every dispatch in the run postdates it — which is what makes a replay impossible: an old run's records predate the new call.
-- **its end** — your own dispatch record. Absent ⇒ `FAIL (replay: this log did not dispatch me)`.
+- **its end** — **the log containing your own dispatch record.** That file, and only that file, is the window. Absent from every log ⇒ `FAIL: replay — this log did not dispatch me`.
+- **its birth** — the `openssl rand -hex 4` tool-call record **whose output is this nonce**, *in that same file*. Every dispatch in the run postdates it.
 
-**Enumerate first, never read the log whole.** Run the Platform Adapter's enumeration command: one row per dispatch record in the window — `k`, dispatch id, worker type, resolved model, prompt digest — **parsed out of the record, not truncated out of it**. Every check below reads that table plus targeted lookups. **Read a return by projection** (`grep -nE '\[(fact|prediction|value):|What would change my mind|concede|label:|consulted:|Position:'`) — about ten lines each; materialize a whole return only to resolve a specific mismatch.
+**Do not "walk every log that mentions the nonce".** A replay produces exactly the signature that accommodation was written for: the moderator re-declares an old run's nonce, the birth event is found in the old file, your dispatch record in the new one, both bounds "satisfied" — and an entire previous council is inside the window, inherited wholesale by a moderator who dispatched nothing but you. Birth not in the file that dispatched you ⇒ `FAIL: replay`.
+
+**Enumerate first, never read the log whole.** Run the Platform Adapter's enumeration command: one row per dispatch record in the window — `k`, dispatch id, worker type, resolved model, prompt digest, **and the worker's own record locator** — **parsed out of the record, not truncated out of it**. Every check below reads that table plus targeted lookups. **Read a return by projection** (`grep -nE '\[(fact|prediction|value):|What would change my mind|concede|label:|consulted:|Position:'`) — about ten lines each; materialize a whole return only to resolve a specific mismatch.
+
+**Normalize entities before you diff anything.** The moderator only ever saw the platform's *escaped* copy of a return (`&lt;` where the worker wrote `<`); the copy you read is raw. The return contract *mandates* angle brackets — `[fact: <file:line>]`, `[prediction: threshold=<comparator+value+unit>]` — so an honest transcription mismatches on sight. **`html.unescape()` both sides before comparing** (A3, A5). A byte-diff without this FAILs the honest run and passes nothing.
 
 ```text
 A0  Every dispatch in the window, against the platform's own records. **A dispatch record is ONLY a real
@@ -316,21 +320,36 @@ A8  Every §7 field is present (a dropped field is a FAIL, not a vacuous pass) a
     `dispatches` = non-audit dispatch records in the window; `retries`, `candidates` (= `ls
     workdir/candidate-*.md`), `rejected`, `rounds`, `concessions`, `non-compliant`, `seats`, `tie-breakers`,
     `seats-degraded`, `opposing`, `blind`, `DA`, `DA-final`, `value cruxes (asked/delegated/unasked)`, and
-    **`models`: strip any context-tier or date suffix from each dispatch's resolved model and count distinct
-    BASE models — two strings for one model would render `correlated no` and switch the disclosure off by
-    accident. `correlated yes` ⇔ `models 1`; a violation ⇒ FAIL**
+    **`models`: over the SEAT-FACING dispatches only** (seat / re-dispatch / cross-exam / DA / DA-final /
+    tie-breaker / label — **not your own audit dispatch, and not a failed retry carrying no resolved model**).
+    Lowercase, strip any context-tier suffix (`[1m]`, `[1M]`) and any trailing `-<8 digits>`, count distinct
+    BASE models, and **paste the raw→base mapping** so an over-count is visible. Two strings for one model, or
+    one stray null, would render `correlated no` and switch the disclosure off by accident — and the audit
+    worker is *deliberately* a different type from the seats, so counting it is exactly that accident, one
+    level up. `correlated yes` ⇔ `models 1`; a violation ⇒ FAIL
 A9  `workdir` resolves from §0's echo **in the log** (payload ≠ echo ⇒ FAIL) and is not `/`, `$HOME`, or an
-    ancestor of the project root. The candidate has no line-initial terminal verdict and its **Status** reads
+    ancestor of the project root. The payload's `candidate: <n>` equals the candidate's own `Candidate:` line
+    **and** the highest `n` in `ls workdir/candidate-*.md`; lower ⇒ FAIL (you were handed a rejected draft).
+    The candidate has no line-initial terminal verdict and its **Status** reads
     `<token withheld>`; `asked >= min(3, V)` against A4's `V`, and `V > 3` ⇒ the meta-question is in the log
-    (with `asked == V` iff the human chose ①); every human-question call carries exactly one question;
-    **every `human-settled` choice equals what the human actually chose in that question's own platform
-    record** — the record's account of the human is checkable, so check it.
-    **The write-gate**, from the log's tool-call records in record order — **and from those of every dispatch
-    in the window, because a worker's tool calls are recorded with the worker, not with you**: between §0's
-    echo and now, a write tool naming a path outside `workdir`, or a shell command containing a redirect or a
-    mutating verb (`rm mv cp ln touch chmod sed -i tee dd git-commit git-add git-checkout apply_patch npm pip
-    make …`) targeting a path outside `workdir` ⇒ FAIL. `mkdir workdir` is the one exception §0 requires.
-    Everything else — `openssl`, the §3 artifact commands, `find`, `grep`, `git show` — is a read.
+    (with `asked == V` iff the human chose ①); every human-question call carries exactly one question.
+    **Every `human-settled` choice equals what the human actually chose — and the question call's OWN result
+    record is not where that lives.** On most platforms that record is a verbatim echo of the moderator's
+    *input*: the options it offers, not the option taken. Reading it, you would find the moderator's claimed
+    label sitting in the list it wrote and pass. The human's answer is in the **next** record — the one the
+    platform writes *back*, carrying the chosen label as text. Locate that record; a `human-settled` line
+    that does not match it ⇒ FAIL.
+    **The write-gate.** A worker's tool calls are recorded **with the worker, not with you** — so iterate the
+    enumeration's dispatch rows and **open each worker's own record**. A seat worker cannot dispatch, but it
+    *can* write (a shell is a write tool: `> file`, `sed -i`, `git commit`). **This sweep is the only thing
+    that catches it** — not the worker-type pin. A sweep that reads your log alone reports on the moderator
+    and calls it a write-gate. Between §0's echo and now: a write tool naming a path outside `workdir`, or a
+    shell command containing a redirect (`>`, `>>`, `| tee`) or a mutating verb (`rm mv cp ln touch chmod
+    sed -i dd git commit git add git checkout apply_patch`) targeting a path outside `workdir` ⇒ FAIL.
+    `mkdir workdir` is the one exception §0 requires. A command whose text appears verbatim on a
+    `criterion-C<n>` / `artifact-C<n>` / `consulted:` line **already in the log before it ran** is a §3
+    artifact command, not a write — including `npm ls` / `pip show`, which a seat's ① routinely asks for.
+    Everything else — `openssl`, `find`, `grep`, `git show` — is a read.
 Answer each check. **A PASS must carry its evidence** — the enumeration rows, the stat output, the re-run
 command and output, both sides of a diff. **A PASS with no pasted evidence is a FAIL of that check.**
 Last line: `PASS` or `FAIL: <ids + evidence>`
