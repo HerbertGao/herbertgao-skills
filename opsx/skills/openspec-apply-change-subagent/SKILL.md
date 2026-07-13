@@ -81,7 +81,7 @@ metadata:
 
 6. **派发 subagent 实现（先并行后串行）**
 
-   按拓扑顺序派发，**用 Agent tool、`subagent_type: "general-purpose"`**：
+   按拓扑顺序派发。**每组先解析一位实现专家**（角色注册表见下「实现专家与解析梯」），再派发：
 
    - **并行**：当前所有前置依赖已满足的组，在**同一条消息里发出多个 Agent 调用**并发执行。
    - **串行**：有依赖的组等其前置组的 subagent 全部返回后，再发出下一批。
@@ -104,7 +104,7 @@ metadata:
 
    先解析每个 subagent 返回的 JSON：若任一组 `needsAttention: true`（`incomplete` 或 `issues` 非空），**不要直接判 review 通过**——按步骤 8 的暂停流程把问题摊给用户。其余组再走文件级 review。
 
-   主 agent 亲自做 review：以返回 JSON 的 `filesChanged` 为线索阅读 subagent 改动过的文件，对照 `completed` 中逐字引用的任务原文与上下文文件中的规格，检查是否真正满足、有无遗漏、有无越界改动（JSON 是导航，不替代读真实 diff）。
+   主 agent 亲自做 review：以返回 JSON 的 `filesChanged` 为线索阅读 subagent 改动过的文件，对照 `completed` 中逐字引用的任务原文与上下文文件中的规格，对照现有契约与测试，检查是否真正满足、有无遗漏、有无越界改动（JSON 是导航，不替代读真实 diff）。
 
    - review **通过**：确认该范围/全部任务的复选框已被 subagent 标记为 `- [x]`（未标的补标）。
    - review **不通过**：派一个修复 subagent，prompt 里给出明确 spec（问题所在文件、具体问题、期望结果、验收方式）。修复返回后**重新 review**，直到通过。
@@ -151,6 +151,25 @@ metadata:
 - `completed[].task` 必须逐字引用任务文件原文，便于主 agent 比对复选框；`checkboxMarked` 由 subagent 自报是否已把 `- [ ]` 改成 `- [x]`，为 `false` 时主 agent 补标并记一笔。
 - subagent 遇到模糊需求 / 设计问题 / 报错 / 越界 时，**不要猜测**——把它记进 `issues` 并停下该条任务，由主 agent 决定。
 - 主 agent 在 prompt 里把这份 schema 原样贴给 subagent，不让其自行约定返回格式。
+
+**实现专家与解析梯**
+
+按组的范围选专家（逻辑角色来自 [agency-agents](https://github.com/msitarzewski/agency-agents)；`subagent_type` = 其 frontmatter `name:`）：
+
+| 实现分组 | 逻辑角色 | agency-agents 源路径 |
+|---|---|---|
+| 前端 | `Frontend Developer` | `engineering/engineering-frontend-developer.md` |
+| 后端 / API | `Backend Architect` | `engineering/engineering-backend-architect.md` |
+| 数据 / 数据库 | `Data Engineer` / `Database Optimizer`（涉及查询计划、索引或 schema 迁移时选后者；两者都涉及时并行各派一个） | `engineering/engineering-data-engineer.md` / `engineering/engineering-database-optimizer.md` |
+| 基础设施 | `DevOps Automator` | `engineering/engineering-devops-automator.md` |
+| 通用小修 | `Minimal Change Engineer` | `engineering/engineering-minimal-change-engineer.md` |
+
+每组按四层解析（回显解析到的层级，`embedded` 层的组 review 时加严）：
+
+1. **registered** —— `subagent_type` 已注册 → 直接派发（最强层）。
+2. **local** —— `~/.agency-agents/<slug>.md` 或 `find ~/.agency-agents -type f -name '*<slug>*.md'`（最深嵌套两层）；校验 frontmatter `name:`，正文（跳过 frontmatter）作 persona 注入 `general-purpose`。
+3. **fetched** —— 本地缺失 → 从 jsDelivr 拉上表源路径入 `~/.agency-agents/` 并校验（`---` frontmatter + `name:`），再按 local 用：`curl -fsSL --max-time 10 https://cdn.jsdelivr.net/gh/msitarzewski/agency-agents@main/<源路径>`。校验失败删缓存、落下一层。
+4. **embedded** —— 网络不可用 → 内嵌浓缩 prompt（更弱的专家；review 加严）：前端「你是前端开发者。用现代 Web 技术实现该任务，遵循代码库现有模式，兼顾可访问性与响应式设计。」后端「你是后端架构师。按现有 API 模式、错误处理约定和数据模型实现该任务，保证向后兼容。」数据「你是数据工程师。按现有 schema 约定、迁移模式和查询优化实践实现该任务。」基础设施「你是 DevOps 自动化工程师。按现有 IaC 模式、CI/CD 约定和部署实践实现该任务。」通用小修「你是最小修改工程师。只用最小可能的 diff 实现指定任务；除非任务明确要求，不加抽象、配置、依赖或特性；不碰无关代码。」
 
 **分组方案输出（步骤 5 后）**
 
@@ -232,6 +251,7 @@ metadata:
 - review 粒度按是否跨子项目判断：跨则分项目 review，否则统一 review；review 不通过派修复 subagent 并重新 review
 - 任务模棱两可、揭示设计问题、遇到错误或阻碍时暂停——不要猜测
 - 使用 CLI 输出中的 contextFiles，不要假设特定的文件名
+- 进度报告中注明每组专家解析到的层级（registered/local/fetched/embedded）；`embedded` 层的组 review 加严——浓缩 prompt 是比完整 agency-agents 原文更弱的专家
 
 **流畅的工作流集成**
 
