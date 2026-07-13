@@ -76,8 +76,10 @@ Dispatch all three slots **in parallel, in one message**. Each prompt is self-co
 |---|---|---|
 | **registered** | the agent's frontmatter `name:` is an installed `subagent_type` → dispatch directly | strongest tier |
 | **local** | `~/.agency-agents/<slug>.md` (flat cache) or `find ~/.agency-agents -type f -name '*<slug>*.md'` (nests up to two levels, e.g. `game-development/unity/unity-architect.md`); confirm the frontmatter `name:` matches (flat-cache copy ≡ its division copy — dispatch either); embed the markdown body, minus frontmatter, as a `general-purpose` agent's persona | full source content, no network |
-| **fetched** | cache miss → fetch the role's known source path from jsDelivr into `~/.agency-agents/`, validate (frontmatter `---` + `name:`), then as `local`. `curl -fsSL --max-time 10 https://cdn.jsdelivr.net/gh/msitarzewski/agency-agents@main/<path>` — paths: CR `engineering/engineering-code-reviewer.md` · RC `testing/testing-reality-checker.md` · MCE `engineering/engineering-minimal-change-engineer.md` · ASE `security/security-appsec-engineer.md`. **Fixed registry roles only** — an open-ended §1c augment has no derivable path → SKIP | same content as local |
+| **fetched** | cache miss → fetch the role's known source path from jsDelivr into `~/.agency-agents/`, validate (frontmatter `---` + `name:`), then as `local`. `mkdir -p ~/.agency-agents && curl -fsSL --max-time 10 https://cdn.jsdelivr.net/gh/msitarzewski/agency-agents@main/<path> -o ~/.agency-agents/<slug>.md` (the `-o` is what makes the next tier able to find it) — paths: CR `engineering/engineering-code-reviewer.md` · RC `testing/testing-reality-checker.md` · MCE `engineering/engineering-minimal-change-engineer.md` · ASE `security/security-appsec-engineer.md`. Validation fails ⇒ delete the cached file, fall through. **Fixed registry roles only** — an open-ended §1c augment has no derivable path → SKIP | same content as local |
 | **embedded** | network down or validation fails → the condensed embedded prompt below | **weaker reviewer: either reviewer slot (CR / RC) at this tier caps the terminal at `APPROVE-DEGRADED (<lane>: embedded fallback)`** (Pass-tier table). A fixer or augment (MCE / ASE) at this tier is echoed but does not cap — its output is re-reviewed next round |
+
+**Supply-chain note on `fetched`**: it pulls `agency-agents@main`, which is mutable — the frontmatter check validates shape, not provenance. It is a convenience tier: an environment that will not trust remote content should pre-clone the catalog (making `local` hit first) or rely on `embedded`, whose prompts ship in this file. 
 
 Embedded prompts (tier 4): **CR** — "You are an adversarial code reviewer. Check correctness, contracts, security, consistency with existing code, and edge cases. Produce a guard/check checklist with `file:line` entries and the three set-dimension columns. End with the findings list and, as the final line, exactly one verdict token." **RC** — "You are a failure-enumeration reviewer. List every guard, early-return, error branch, exception catch, assert, validation, exit-code, state transition, and claimed-pass point in a table with `file:line`. For each row, instantiate the applicable failing inputs; record observed behavior vs contract claim and a terminal state. End with the findings list and one final verdict token." **MCE** — "You are a minimal-change engineer. Fix only the specified finding with the smallest possible diff. Add no abstractions, config, dependencies, or features unless the finding's correctness requires it. Touch nothing unrelated." **ASE** — "You are a security reviewer. Check injection, auth bypass, data exposure, and OWASP top-10 issues in the changed code. Report findings with severity and `file:line`."
 
@@ -91,7 +93,7 @@ Embedded prompts (tier 4): **CR** — "You are an adversarial code reviewer. Che
 
 **Echo this status block every round** — a failed subagent returns empty, indistinguishable from "no problems," so an empty slot must never default to pass. Slots carry the **normalized** verdict plus the resolved tier; the Codex slot carries only `APPROVE` / `CHANGES-REQUESTED` / `not-run(reason)`. Alternate canonical strings: `Scope fence: no full requirement context, skip`; `Anchors: none` (on a pure-prose round this is consistent with the gate — the produced-empty CR checklist is the weak anchor, per §1's exception); `Simplicity: lean` / `Simplicity: no code or prose this round, skip`; `Legibility: clean` / `Legibility: no prose this round, skip`.
 
-```
+```text
 This round: Code Reviewer=APPROVE [registered] │ Reality Checker(§1b)=CHANGES-REQUESTED [local] │ Codex=not-run(empty)
 Augment: none
 Scope fence: agreed scope anchored │ out-of-scope findings: 0
@@ -100,7 +102,7 @@ Simplicity: net -12 flagged │ over-eng: 1 open
 Legibility: unfollowable 0 │ undefined 2 │ restated 1
 ```
 
-The `Anchors:` line names, per in-scope category, the anchor and its strength — it is what evaluator ⑦ reads; without it "every category strong-anchored" is an unverifiable claim. `over-eng: K open` counts §1e findings not yet actioned or review-closed in triage.
+The Codex slot carries no tier marker: it is not an agency-agents role and never enters the Resolution ladder. The `Anchors:` line names, per in-scope category, the anchor and its strength — it is what evaluator ⑦ reads; without it "every category strong-anchored" is an unverifiable claim. `over-eng: K open` counts §1e findings not yet actioned or review-closed in triage.
 
 ### 1b. Failure-enumeration pass (Reality Checker slot)
 
@@ -262,7 +264,7 @@ Merge findings from all sources — three slots, anchors, augments, §1e, §1f, 
 
 The rewrite contract (pinned into every prose-semantic fix spec): rewrite the containing **section from its purpose** — never add a caveat to a section that has taken 3 of this loop's insertions (Terms: patch count); every rule keeps exactly what it required before, except the rule the finding names; one authoritative statement per rule, others point at it; each rule carries, in one clause, **the failure it prevents** (a rule with no why is the one the next reader deletes as noise — and then the loop rediscovers the hole); land each rule **where a reader needs it**, not where the finding was found. **A re-expression that preserves what the rules require is in-scope by construction — it does not trip §1d; changing what a rule requires is a scope change and does.**
 
-**Every fix spec** (any lane): file, fix, acceptance per problem; the §1d scope pin at the top. **The ponytail ladder is pinned** for each triage-approved fix: the laziest fix that holds (stdlib > native > installed-dep > one line > minimum code), no new abstraction / config / dependency unless the finding's correctness requires it; a deliberate simplification carries a `ponytail:` comment naming its ceiling and upgrade path — **non-contractual**: §1b still judges that line against the truth source next round and still instantiates the failing inputs. Never simplify the never-simplify set (§1e).
+**Every fix spec** (any lane): file, fix, acceptance per problem; the §1d scope pin at the top. **The ponytail ladder is pinned** for each triage-approved fix: the laziest fix that holds (stdlib > native > installed-dep > one line > minimum code), no new abstraction / config / dependency unless the finding's correctness requires it; a deliberate simplification carries a `ponytail:` comment naming its ceiling and upgrade path — **non-contractual**: §1b still judges that line against the truth source next round and still instantiates the failing inputs. Never simplify the never-simplify set (§1e). For large cross-module fixes, split into disjoint write scopes, or keep the fix in the main thread when delegation would add coordination risk.
 
 **Fixer boundaries**: uncontested items first; pause and report only when a discovery would make the spec wrong, introduce a regression, or require expanding scope; record adjacent small issues without self-expanding. A finding **unfixable without crossing scope** → report back only (§1d).
 
@@ -309,7 +311,7 @@ Back to §1, three slots in parallel — Codex may recover mid-run. Codex retry,
 
 `/goal` re-reads the transcript at each turn's end with the evaluator and restarts the turn while the completion condition is unmet. The status block must be echoed **every round**; the terminal token appears only on the terminating round.
 
-```
+```text
 /goal Run an adversarial review loop on this change per review-loop.
 
 COMPLETE only when all of these hold in the latest round:

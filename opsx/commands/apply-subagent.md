@@ -13,8 +13,8 @@ argument-hint: "[change-name]"
 
 - 主 agent 作为**编排者**：选变更、跑 `openspec-cn` 状态/指令、读上下文文件、分组、派发 subagent、review、报告进度、建议归档——**不亲自写实现代码**
 - 按**范围**（子项目 / 模块 / 技术栈）对待处理任务分组，判断组间依赖
-- **先并行后串行**派发 subagent（`subagent_type: "general-purpose"`）实现各组任务
-- 复选框 `- [x]` 由 subagent 自己标记
+- **先并行后串行**派发 subagent 实现各组任务：每组先按四层解析梯（registered → local → fetched → embedded）解析一位实现专家（前端 / 后端 / 数据 / 基础设施 / 通用小修），未注册的专家以其 persona 注入 `general-purpose`
+- 复选框 `- [x]` 由主 agent 独占标记（subagent 只读任务文件，避免并行组互相覆盖）
 - review 粒度按是否跨子项目判断：跨则分项目 review，否则统一 review；不通过派修复 subagent 并重新 review
 
 严格按该 skill 的步骤、输出格式与护栏执行。

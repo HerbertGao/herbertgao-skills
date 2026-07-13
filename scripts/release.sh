@@ -34,7 +34,7 @@ validate_origin_remote() {
   esac
 }
 
-validate_codex_marketplace() {
+validate_marketplaces() {
   command -v jq >/dev/null 2>&1 || die "jq not found (install jq)"
   local mf=".agents/plugins/marketplace.json"
   [[ -f "$mf" ]] || die "missing Codex marketplace: $mf"
@@ -125,7 +125,7 @@ if [[ "$mode" == "--dry-run" ]]; then
   _dry_restore() { local f; for f in "${files[@]}"; do [[ -e "$snap/$f" ]] && cp "$snap/$f" "$f"; done; rm -rf "$snap"; }
   trap _dry_restore EXIT
   for f in "${files[@]}"; do [[ -e "$f" ]] || continue; mkdir -p "$snap/$(dirname "$f")"; cp "$f" "$snap/$f"; done
-  validate_codex_marketplace
+  validate_marketplaces
   scripts/bump-version.sh "$ver"
   git --no-pager diff -- "${files[@]}" || true
   echo "release: (dry-run) restoring originals; a real run would commit, tag $tag, and push."
@@ -136,7 +136,7 @@ fi
 [[ "$(git branch --show-current)" == "main" ]] || die "not on main"
 [[ -z "$(git status --porcelain)" ]] || die "working tree dirty (incl. untracked) — commit or stash first"
 validate_origin_remote
-validate_codex_marketplace
+validate_marketplaces
 git fetch -q origin main || die "git fetch failed"
 
 # recovery: a prior atomic push may have aborted, leaving the tag local-only (origin has neither

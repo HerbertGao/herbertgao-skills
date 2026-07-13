@@ -86,8 +86,10 @@ Dispatch all three slots **in parallel, in one message**. Each prompt is self-co
 |---|---|---|
 | **registered** | the agent's frontmatter `name:` is installed as a native subagent type (by name, or `@<slug>` where slug = `slugify(name)`) → dispatch directly | strongest tier |
 | **local** | `~/.agency-agents/<slug>.md` (flat cache) or `find ~/.agency-agents -type f -name '*<slug>*.md'` (nests up to two levels, e.g. `game-development/unity/unity-architect.md`); confirm the frontmatter `name:` matches (flat-cache copy ≡ its division copy — dispatch either); embed the markdown body, minus frontmatter, as a generic subagent's persona | full source content, no network |
-| **fetched** | cache miss → fetch the role's known source path from jsDelivr into `~/.agency-agents/`, validate (frontmatter `---` + `name:`), then as `local`. `curl -fsSL --max-time 10 https://cdn.jsdelivr.net/gh/msitarzewski/agency-agents@main/<path>` (or any web-fetch tool onto the same URL) — paths: CR `engineering/engineering-code-reviewer.md` · RC `testing/testing-reality-checker.md` · MCE `engineering/engineering-minimal-change-engineer.md` · ASE `security/security-appsec-engineer.md`. Validation fails ⇒ delete the cached file, fall through. **Fixed registry roles only** — an open-ended §1c augment has no derivable path → SKIP | same content as local |
+| **fetched** | cache miss → fetch the role's known source path from jsDelivr into `~/.agency-agents/`, validate (frontmatter `---` + `name:`), then as `local`. `mkdir -p ~/.agency-agents && curl -fsSL --max-time 10 https://cdn.jsdelivr.net/gh/msitarzewski/agency-agents@main/<path> -o ~/.agency-agents/<slug>.md` (the `-o` is what makes the next tier able to find it; or any web-fetch tool writing to the same path) — paths: CR `engineering/engineering-code-reviewer.md` · RC `testing/testing-reality-checker.md` · MCE `engineering/engineering-minimal-change-engineer.md` · ASE `security/security-appsec-engineer.md`. Validation fails ⇒ delete the cached file, fall through. **Fixed registry roles only** — an open-ended §1c augment has no derivable path → SKIP | same content as local |
 | **embedded** | network down or validation fails → the condensed embedded prompt below | **weaker reviewer: either expert slot (CR / RC) at this tier caps the terminal at `APPROVE-DEGRADED (<lane>: embedded fallback)`** (Pass-tier table). A fixer or augment (MCE / ASE) at this tier is echoed but does not cap — its output is re-reviewed next round |
+
+**Supply-chain note on `fetched`**: it pulls `agency-agents@main`, which is mutable — the frontmatter check validates shape, not provenance. It is a convenience tier: an environment that will not trust remote content should pre-clone the catalog (making `local` hit first) or rely on `embedded`, whose prompts ship in this file. 
 
 Embedded prompts (tier 4): **CR** — "You are an adversarial code reviewer. Check correctness, contracts, security, consistency with existing code, and edge cases. Produce a guard/check checklist with `file:line` entries and the three set-dimension columns. End with the findings list and, as the final line, exactly one verdict token." **RC** — "You are a failure-enumeration reviewer. List every guard, early-return, error branch, exception catch, assert, validation, exit-code, state transition, and claimed-pass point in a table with `file:line`. For each row, instantiate the applicable failing inputs; record observed behavior vs contract claim and a terminal state. End with the findings list and one final verdict token." **MCE** — "You are a minimal-change engineer. Fix only the specified finding with the smallest possible diff. Add no abstractions, config, dependencies, or features unless the finding's correctness requires it. Touch nothing unrelated." **ASE** — "You are a security reviewer. Check injection, auth bypass, data exposure, and OWASP top-10 issues in the changed code. Report findings with severity and `file:line`." **Independent Reviewer** (its standing prompt, not a fallback) — "You are an independent adversarial reviewer with no prior commitment to the design. Find what the author missed: self-contradiction, cross-file drift, forward fragility, ambiguity, scope creep, security. Report findings with severity and `file:line`. End with the findings list and one final verdict token."
 
@@ -101,7 +103,7 @@ Embedded prompts (tier 4): **CR** — "You are an adversarial code reviewer. Che
 
 **Echo this status block every round** — a failed subagent returns empty, indistinguishable from "no problems," so an empty slot must never default to pass. Slots carry the **normalized** verdict plus the resolved tier; the Independent Reviewer slot carries only `APPROVE` / `CHANGES-REQUESTED` / `not-run(reason)`. Alternate canonical strings: `Scope fence: no full requirement context, skip`; `Anchors: none` (on a pure-prose round this is consistent with the gate — the produced-empty CR checklist is the weak anchor, per §1's exception); `Simplicity: lean` / `Simplicity: no code or prose this round, skip`; `Legibility: clean` / `Legibility: no prose this round, skip`.
 
-```
+```text
 This round: Code Reviewer=APPROVE [registered] | Reality Checker(§1b)=CHANGES-REQUESTED [local] | Independent Reviewer=not-run(empty) [generic]
 Augment: none
 Scope fence: agreed scope anchored | out-of-scope findings: 0
@@ -319,7 +321,7 @@ Back to §1, three slots in parallel — the third slot may recover mid-run. Its
 
 A harness (`/goal` on Claude Code) re-reads the transcript at each turn's end with the evaluator and restarts the turn while the completion condition is unmet. The status block must be echoed **every round**; the terminal token appears only on the terminating round.
 
-```
+```text
 Run an adversarial review loop on this change per review-loop.
 
 COMPLETE only when all of these hold in the latest round:
