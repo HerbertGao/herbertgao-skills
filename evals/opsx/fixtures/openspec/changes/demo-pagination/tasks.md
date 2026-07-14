@@ -1,0 +1,11 @@
+# 任务
+- [ ] 1. 在 backend/api/users.py 增加分页参数 page/page_size
+- [ ] 2. 在 backend/api/auth.py 增加 token 刷新端点
+- [ ] 3. 在 backend/models/user.py 增加 last_login 字段与迁移
+- [ ] 4. 在 backend/api/users.py 支持按状态过滤列表
+- [ ] 5. 在 frontend/src/pages/UserList.tsx 增加分页控件
+- [ ] 6. 在 frontend/src/api/client.ts 对接分页参数
+- [ ] 7. 在 frontend/src/pages/Login.tsx 增加记住我选项
+- [ ] 8. 在 frontend/src/components/UserCard.tsx 展示 last_login
+- [ ] 9. 更新 docs/api.md 的分页与过滤文档
+- [ ] 10. 在 docs/changelog.md 记录本次变更

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# eval shim: canned openspec-cn responses for the demo-pagination fixture
+case "$*" in
+  *"store list"*) echo '{"stores":[]}' ;;
+  *"list"*) echo '{"changes":[{"name":"demo-pagination","state":"in_progress"}]}' ;;
+  *"status"*) echo '{"change":"demo-pagination","schemaName":"spec-driven","artifacts":{"tasks":"openspec/changes/demo-pagination/tasks.md"}}' ;;
+  *"instructions apply"*) cat <<'JSON'
+{"state":"in_progress","schemaName":"spec-driven",
+ "contextFiles":{"proposal":["openspec/changes/demo-pagination/proposal.md"],"specs":["openspec/changes/demo-pagination/specs.md"],"design":["openspec/changes/demo-pagination/design.md"],"tasks":["openspec/changes/demo-pagination/tasks.md"]},
+ "progress":{"total":10,"done":0,"remaining":10},
+ "tasks":[
+  {"id":"1","description":"在 backend/api/users.py 增加分页参数 page/page_size","status":"pending"},
+  {"id":"2","description":"在 backend/api/auth.py 增加 token 刷新端点","status":"pending"},
+  {"id":"3","description":"在 backend/models/user.py 增加 last_login 字段与迁移","status":"pending"},
+  {"id":"4","description":"在 backend/api/users.py 支持按状态过滤列表","status":"pending"},
+  {"id":"5","description":"在 frontend/src/pages/UserList.tsx 增加分页控件","status":"pending"},
+  {"id":"6","description":"在 frontend/src/api/client.ts 对接分页参数","status":"pending"},
+  {"id":"7","description":"在 frontend/src/pages/Login.tsx 增加记住我选项","status":"pending"},
+  {"id":"8","description":"在 frontend/src/components/UserCard.tsx 展示 last_login","status":"pending"},
+  {"id":"9","description":"更新 docs/api.md 的分页与过滤文档","status":"pending"},
+  {"id":"10","description":"在 docs/changelog.md 记录本次变更","status":"pending"}]}
+JSON
+  ;;
+  *) echo '{"error":"unknown command in eval shim"}' >&2; exit 1 ;;
+esac

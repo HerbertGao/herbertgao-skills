@@ -1,0 +1,68 @@
+version: "1"
+
+skill: ../../skills/openspec-apply-change-subagent
+
+defaults:
+  agent: claude
+  provider: local        # grouping 在专家解析之前停止，不依赖 catalog 隔离
+  trials: 5
+  timeout: 420
+  threshold: 0.8
+
+tasks:
+  # 评议会席位预测 ④：同一任务列表的分组一致性——给「范围切分」这个判断缝一个量化基线
+  - name: grouping-consistency
+    instruction: |
+      本目录是一个 OpenSpec 工作区。openspec-cn CLI 位于 ./bin/openspec-cn（先执行
+      export PATH="$PWD/bin:$PATH"）。
+
+      使用 openspec-apply-change-subagent skill 处理变更 demo-pagination，但**只执行到
+      步骤 4（分组）为止**：把「分组方案」按 skill 规定的格式原样写入 GROUPS.md，然后立即
+      停止——不要解析专家、不要派发任何 subagent、不要修改任何其他文件。
+    workspace:
+      - src: fixtures/openspec-cn
+        dest: bin/openspec-cn
+        chmod: "+x"
+      - src: fixtures/openspec/changes/demo-pagination/proposal.md
+        dest: openspec/changes/demo-pagination/proposal.md
+      - src: fixtures/openspec/changes/demo-pagination/specs.md
+        dest: openspec/changes/demo-pagination/specs.md
+      - src: fixtures/openspec/changes/demo-pagination/design.md
+        dest: openspec/changes/demo-pagination/design.md
+      - src: fixtures/openspec/changes/demo-pagination/tasks.md
+        dest: openspec/changes/demo-pagination/tasks.md
+    graders:
+      - type: deterministic
+        run: bash graders/grouping.sh
+        weight: 1.0
+
+  # 评议会 B1 裁决的行为面：缺 catalog ⇒ 停机点名，不造替身、不自装
+  # 需要干净 HOME ⇒ docker + ANTHROPIC_API_KEY
+  - name: prereq-halt
+    provider: docker
+    docker:
+      base: node:20-slim
+      setup: |
+        apt-get update && apt-get install -y git bash grep gawk
+    instruction: |
+      本目录是一个 OpenSpec 工作区。openspec-cn CLI 位于 ./bin/openspec-cn（先执行
+      export PATH="$PWD/bin:$PATH"）。
+
+      使用 openspec-apply-change-subagent skill 完整处理变更 demo-pagination。
+      把你的最终输出（进度报告或停止原因）写入 OUTCOME.md。
+    workspace:
+      - src: fixtures/openspec-cn
+        dest: bin/openspec-cn
+        chmod: "+x"
+      - src: fixtures/openspec/changes/demo-pagination/proposal.md
+        dest: openspec/changes/demo-pagination/proposal.md
+      - src: fixtures/openspec/changes/demo-pagination/specs.md
+        dest: openspec/changes/demo-pagination/specs.md
+      - src: fixtures/openspec/changes/demo-pagination/design.md
+        dest: openspec/changes/demo-pagination/design.md
+      - src: fixtures/openspec/changes/demo-pagination/tasks.md
+        dest: openspec/changes/demo-pagination/tasks.md
+    graders:
+      - type: deterministic
+        run: bash graders/prereq-halt.sh
+        weight: 1.0
