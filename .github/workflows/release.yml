@@ -23,6 +23,13 @@ jobs:
         with:
           fetch-depth: 0   # full history + tags for the changelog range (git describe)
 
+      - name: Format contract (a drifted literal is a gate that never fires)
+        # No upstream clone here: the release path must not be breakable by a third party's
+        # rename. The catalog question belongs to check.yml's scheduled canary, which owns it.
+        run: |
+          scripts/check-format.py --self-test
+          SKIP_CATALOG_CHECK=1 scripts/check-format.py
+
       - name: Resolve version from tag
         id: ver
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"

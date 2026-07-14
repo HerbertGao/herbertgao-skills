@@ -114,6 +114,10 @@ validate_marketplaces() {
     p="${d%/.claude-plugin/}"
     compgen -G "$p/skills/*/SKILL.md" >/dev/null || die "$p has no skills/*/SKILL.md — the skill itself is missing"
   done
+
+  # The specs carry runtime strings their own evaluators match by literal. A stray
+  # character there disarms a gate silently, and prose review is a bad detector for it.
+  env -u SKIP_CATALOG_CHECK -u AGENCY_AGENTS scripts/check-format.py || die "format contract violated (contracts/format.json) — fix before releasing"
 }
 
 if [[ "$mode" == "--dry-run" ]]; then

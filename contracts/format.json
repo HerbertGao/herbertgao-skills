@@ -1,0 +1,236 @@
+{
+  "$comment": [
+    "Canonical strings the skills must emit and the evaluators must match.",
+    "SKILL.md stays self-contained at runtime (npx skills add ships only SKILL.md),",
+    "so these strings live in the specs too — this file is the authority they are",
+    "checked against, mechanically, by scripts/check-format.py at release and in CI.",
+    "Edit a string here and in every file listed under `files`, or the check fails.",
+    "fenced_must_contain: the one block that actually gets copied. A rule can be word-perfect in the prose and absent from the template, and then nobody ever emits it.",
+    "required_verbatim is the only parity mechanism for the hand-maintained <plugin>/ copy, and it is deliberately narrow: it pins the literals an evaluator MATCHES. Everything else in that copy is unguarded — stated here so nobody mistakes green for parity."
+  ],
+  "forbidden_everywhere": {
+    "$comment": "A removed behavior leaves no notice behind: the spec reads as if it never existed. Scanned across markdown AND the shipped yaml/json entry shells — residue in an entry shell ships just the same.",
+    "patterns": [
+      "jsdelivr",
+      "agency-agents@main",
+      "four-tier",
+      "四层",
+      "fetched tier"
+    ],
+    "files": [
+      "skills",
+      "review-loop",
+      "council",
+      "opsx",
+      "codex-plugins",
+      "README.md",
+      ".claude-plugin",
+      ".agents"
+    ]
+  },
+  "skills": {
+    "review-loop": {
+      "files": [
+        "skills/review-loop/SKILL.md",
+        "review-loop/skills/review-loop/SKILL.md",
+        "codex-plugins/review-loop/skills/review-loop/SKILL.md"
+      ],
+      "tiers": [
+        "registered",
+        "local",
+        "embedded"
+      ],
+      "marker_prefix": "[embedded",
+      "$comment_prefix": "Evaluator ⑦ matches this literal. It MUST be a prefix of every marker form below — that is the check that catches a stray backtick or a renamed marker silently disarming the cap.",
+      "marker_forms": [
+        "[embedded: agency-agents not installed]",
+        "[embedded: <lane> not resolvable at <catalog path>]"
+      ],
+      "required_verbatim": [
+        "A CR APPROVE without its deliverable is not a pass",
+        "CAPPED (catalog self-installed)",
+        "[local: <catalog path>]",
+        "not-run(tier unverified)"
+      ],
+      "catalog_paths": {
+        "Code Reviewer": "engineering/engineering-code-reviewer.md",
+        "Reality Checker": "testing/testing-reality-checker.md",
+        "Minimal Change Engineer": "engineering/engineering-minimal-change-engineer.md",
+        "Application Security Engineer": "security/security-appsec-engineer.md",
+        "Backend Architect": "engineering/engineering-backend-architect.md",
+        "Backend Architect (mcp-memory variant)": "integrations/mcp-memory/backend-architect-with-memory.md",
+        "Blockchain Security Auditor": "security/security-blockchain-security-auditor.md"
+      },
+      "echo_labels": [
+        "Slots:",
+        "Augment:",
+        "Scope fence:",
+        "Anchors:",
+        "Simplicity:",
+        "Legibility:"
+      ],
+      "tokens": [
+        "APPROVE",
+        "CHANGES-REQUESTED",
+        "CLEAR",
+        "APPROVE-DEGRADED",
+        "CAPPED",
+        "OUT-OF-SCOPE-PENDING"
+      ],
+      "$comment_echo": "The status block is what the evaluator reads. A renamed label is a predicate that silently stops firing.",
+      "exhaustive": [],
+      "fenced_must_contain": [
+        "[local: testing/testing-reality-checker.md]"
+      ]
+    },
+    "openspec-apply-change-subagent": {
+      "files": [
+        "skills/openspec-apply-change-subagent/SKILL.md",
+        "opsx/skills/openspec-apply-change-subagent/SKILL.md",
+        "codex-plugins/opsx/skills/openspec-apply-change-subagent/SKILL.md"
+      ],
+      "tiers": [
+        "registered",
+        "local",
+        "embedded"
+      ],
+      "marker_prefix": "[embedded",
+      "marker_forms": [
+        "[embedded: agency-agents 未安装]",
+        "[embedded: <角色> 在 <源路径> 解析不出]"
+      ],
+      "required_verbatim": [
+        "<组>/<角色>：[local: <源路径>]"
+      ],
+      "catalog_paths": {
+        "Frontend Developer": "engineering/engineering-frontend-developer.md",
+        "Backend Architect": "engineering/engineering-backend-architect.md",
+        "Data Engineer": "engineering/engineering-data-engineer.md",
+        "Database Optimizer": "engineering/engineering-database-optimizer.md",
+        "DevOps Automator": "engineering/engineering-devops-automator.md",
+        "Minimal Change Engineer": "engineering/engineering-minimal-change-engineer.md"
+      },
+      "echo_labels": [
+        "<组>/<角色>：[local:"
+      ],
+      "tokens": [],
+      "$comment_echo": "The tier echo is keyed per expert: the 数据 group can dispatch two, and two identical markers hide a dropped one.",
+      "exhaustive": [],
+      "fenced_must_contain": [
+        "[local: engineering/engineering-frontend-developer.md]"
+      ]
+    },
+    "council": {
+      "files": [
+        "skills/council/SKILL.md",
+        "council/skills/council/SKILL.md",
+        "codex-plugins/council/skills/council/SKILL.md"
+      ],
+      "tiers": [
+        "synthesized"
+      ],
+      "marker_prefix": null,
+      "marker_forms": [],
+      "required_verbatim": [
+        "find ~/.agency-agents -mindepth 2 -type f -name '*.md' \\\n  ! -iname 'README*' ! -iname 'CONTRIBUTING*' ! -iname 'SECURITY.md' ! -path '*/.github/*' 2>/dev/null | sort"
+      ],
+      "catalog_paths": {
+        "Backend Architect": "engineering/engineering-backend-architect.md",
+        "Backend Architect (mcp-memory variant)": "integrations/mcp-memory/backend-architect-with-memory.md"
+      },
+      "echo_labels": [
+        "opposing:"
+      ],
+      "tokens": [
+        "CONVERGED",
+        "UNRESOLVED",
+        "STOPPED"
+      ],
+      "$comment_echo": "The auditor parses the seat echo literally (A2). A drifted format is an audit that cannot reconcile.",
+      "exhaustive": [],
+      "fenced_must_contain": [
+        "-> seated",
+        "synthesized"
+      ]
+    }
+  },
+  "catalog": {
+    "$comment": "Checked against a real checkout when one is present at ~/.agency-agents; skipped with a notice otherwise. This is what proves the path table is not fiction — the flaw that let `Application Security Engineer` resolve to nothing on a clean install.",
+    "repo": "https://github.com/msitarzewski/agency-agents",
+    "min_depth": 2
+  },
+  "families": [
+    {
+      "$comment": "Applied to every checked file, not per-skill: a family is only closed where nobody forgot it.",
+      "regex": "CAPPED\\s*\\([^)]*\\)",
+      "allowed": [
+        "CAPPED (cap-reached, N items left)",
+        "CAPPED (catalog self-installed)"
+      ]
+    },
+    {
+      "regex": "not-run\\([^)]*\\)",
+      "allowed": [
+        "not-run(...)",
+        "not-run(empty)",
+        "not-run(missing guard checklist)",
+        "not-run(tier unverified)"
+      ]
+    },
+    {
+      "regex": "APPROVE-DEGRADED \\([^)]*\\)",
+      "allowed": [
+        "APPROVE-DEGRADED (<all reasons, one parenthesis>)",
+        "APPROVE-DEGRADED (<lane>: embedded fallback)",
+        "APPROVE-DEGRADED (bloat: +N over 2 rounds, no lane removed anything)",
+        "APPROVE-DEGRADED (pure-proposal: prose-only)",
+        "APPROVE-DEGRADED (weak-reconciliation: incomplete)",
+        "APPROVE-DEGRADED (weak-reconciliation: incomplete; Independent Reviewer structural: quota)"
+      ]
+    },
+    {
+      "regex": "STOPPED \\([^)]*\\)",
+      "allowed": [
+        "STOPPED (awaiting human)",
+        "STOPPED (cannot run blind)",
+        "STOPPED (no real experts: a second axis has no match)",
+        "STOPPED (no real experts: catalog unavailable)",
+        "STOPPED (no real experts: none on the opposing axis)",
+        "STOPPED (not a council question)",
+        "STOPPED (proposition needs splitting)",
+        "STOPPED (returns unverifiable)",
+        "STOPPED (seats exhausted)",
+        "STOPPED (…)"
+      ]
+    },
+    {
+      "regex": "\\[embedded[^\\]\\n]*\\]",
+      "allowed": [
+        "[embedded: <lane> not resolvable at <catalog path>]",
+        "[embedded: <角色> 在 <源路径> 解析不出]",
+        "[embedded: agency-agents not installed]",
+        "[embedded: agency-agents 未安装]",
+        "[embedded]"
+      ]
+    },
+    {
+      "$comment": "Evaluator ⑫ matches these literally. A stray capital or backtick here disarms the check that a claimed strongest-tier expert was ever dispatched.",
+      "regex": "\\[\\s*[Rr]egistered[^\\]\\n]*\\]",
+      "allowed": [
+        "[registered]"
+      ]
+    },
+    {
+      "regex": "\\[\\s*[Ll]ocal[^\\]\\n]*\\]",
+      "allowed": [
+        "[local: <catalog path>]",
+        "[local: <path>]",
+        "[local: <源路径>]",
+        "[local: engineering/engineering-frontend-developer.md]",
+        "[local: security/security-blockchain-security-auditor.md]",
+        "[local: testing/testing-reality-checker.md]"
+      ],
+      "$comment": "A pathless local marker is the cheapest lie the ladder names; it is not a legal form."
+    }
+  ]
+}

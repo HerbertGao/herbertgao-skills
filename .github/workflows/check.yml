@@ -1,0 +1,48 @@
+name: check
+
+# The specs carry runtime strings their own evaluators match by literal (tier markers,
+# canonical remedies, terminal tokens). A stray character disarms a gate silently, so the
+# spelling is checked mechanically instead of hoping a reviewer spots it.
+#
+# Two jobs, on purpose. `contract` must not depend on the upstream catalog: it runs on
+# every push, and a rename over there would otherwise turn every unrelated PR here red —
+# which is the same unpinned-upstream dependency this repo just spent a release deleting.
+# `catalog` is a canary: it owns the upstream question and answers it on its own schedule.
+# Least privilege: this runs PR-authored code on `pull_request`, so it gets read-only
+# scope and no persisted credentials. A workflow that lints a supply chain and hands
+# its own token to the code it lints is not linting a supply chain.
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'   # Monday — upstream drift is a Monday problem, not a PR problem
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: The checks can actually fail
+        run: scripts/check-format.py --self-test
+      - name: Specs match contracts/format.json
+        run: SKIP_CATALOG_CHECK=1 scripts/check-format.py
+
+  catalog:
+    # Does the persona path table still resolve on a clean install? Only upstream can
+    # break this, so only upstream's clock should be able to break the build.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: git clone --depth 1 https://github.com/msitarzewski/agency-agents ~/.agency-agents
+      - name: Every lane still resolves to a real agent
+        run: scripts/check-format.py
