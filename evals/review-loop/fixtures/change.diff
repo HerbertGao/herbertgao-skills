@@ -1,0 +1,9 @@
+--- a/app.py
++++ b/app.py
+@@ -1,4 +1,6 @@
+ def get_users(page=1, page_size=20):
+     if page < 1:
+         page = 1
++    if page_size > 100:
++        page_size = 100
+     return db.query(f"SELECT * FROM users LIMIT {page_size} OFFSET {(page-1)*page_size}")
