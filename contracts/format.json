@@ -37,15 +37,11 @@
       ],
       "tiers": [
         "registered",
-        "local",
-        "embedded"
+        "local"
       ],
-      "marker_prefix": "[embedded",
+      "marker_prefix": null,
       "$comment_prefix": "Evaluator ⑦ matches this literal. It MUST be a prefix of every marker form below — that is the check that catches a stray backtick or a renamed marker silently disarming the cap.",
-      "marker_forms": [
-        "[embedded: agency-agents not installed]",
-        "[embedded: <lane> not resolvable at <catalog path>]"
-      ],
+      "marker_forms": [],
       "required_verbatim": [
         "A CR APPROVE without its deliverable is not a pass",
         "CAPPED (catalog self-installed)",
@@ -91,14 +87,10 @@
       ],
       "tiers": [
         "registered",
-        "local",
-        "embedded"
+        "local"
       ],
-      "marker_prefix": "[embedded",
-      "marker_forms": [
-        "[embedded: agency-agents 未安装]",
-        "[embedded: <角色> 在 <源路径> 解析不出]"
-      ],
+      "marker_prefix": null,
+      "marker_forms": [],
       "required_verbatim": [
         "<组>/<角色>：[local: <源路径>]"
       ],
@@ -181,11 +173,10 @@
       "regex": "APPROVE-DEGRADED \\([^)]*\\)",
       "allowed": [
         "APPROVE-DEGRADED (<all reasons, one parenthesis>)",
-        "APPROVE-DEGRADED (<lane>: embedded fallback)",
         "APPROVE-DEGRADED (bloat: +N over 2 rounds, no lane removed anything)",
         "APPROVE-DEGRADED (pure-proposal: prose-only)",
         "APPROVE-DEGRADED (weak-reconciliation: incomplete)",
-        "APPROVE-DEGRADED (weak-reconciliation: incomplete; Independent Reviewer structural: quota)"
+        "APPROVE-DEGRADED (weak-reconciliation: incomplete; third-slot: not-run)"
       ]
     },
     {
@@ -201,16 +192,6 @@
         "STOPPED (returns unverifiable)",
         "STOPPED (seats exhausted)",
         "STOPPED (…)"
-      ]
-    },
-    {
-      "regex": "\\[embedded[^\\]\\n]*\\]",
-      "allowed": [
-        "[embedded: <lane> not resolvable at <catalog path>]",
-        "[embedded: <角色> 在 <源路径> 解析不出]",
-        "[embedded: agency-agents not installed]",
-        "[embedded: agency-agents 未安装]",
-        "[embedded]"
       ]
     },
     {
@@ -231,6 +212,13 @@
         "[local: testing/testing-reality-checker.md]"
       ],
       "$comment": "A pathless local marker is the cheapest lie the ladder names; it is not a legal form."
+    },
+    {
+      "$comment": "The prerequisite halt is a hand-back, not a verdict; one canonical form.",
+      "regex": "PREREQUISITE-MISSING\\s*\\([^)]*\\)",
+      "allowed": [
+        "PREREQUISITE-MISSING (<lane> — see README)"
+      ]
     }
   ]
 }

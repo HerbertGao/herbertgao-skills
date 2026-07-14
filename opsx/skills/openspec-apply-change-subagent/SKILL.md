@@ -224,12 +224,11 @@ openspec-cn validate "<name>" --strict     # 只校验规格 markdown
 
 **catalog 是用户装的前置条件（见 README）；本 skill 及其派出的 subagent 只读它、不写它**——写实现代码的 subagent，来自用户自己 clone、自己控制版本的那份 checkout。缺了就降级并说明，本 skill 不替用户装。
 
-**三层解析（回显解析到的层级）：**
+**两层解析（回显解析到的层级）：**
 
-1. **registered** —— 该角色已注册为宿主的原生 subagent（按其 frontmatter `name:`，如 `Frontend Developer`）→ 直接派发。**注意：catalog 文件的 frontmatter `name:` 是显示名（`Frontend Developer`），不是文件名 slug（`engineering-frontend-developer`）——按错的那个查，三层全都命中不了。**
+1. **registered** —— 该角色已注册为宿主的原生 subagent（按其 frontmatter `name:`，如 `Frontend Developer`）→ 直接派发。**注意：catalog 文件的 frontmatter `name:` 是显示名（`Frontend Developer`），不是文件名 slug（`engineering-frontend-developer`）——按错的那个查，两层全都命中不了。**
 2. **local** —— 上表的源路径，在 `~/.agency-agents/`（一个 catalog 的 git clone，嵌套两层）下取；校验 frontmatter `name:` 等于该角色名；正文（跳过 frontmatter）作 persona 注入 `general-purpose`。**回显带上解析到的路径**——`<组>/<角色>：[local: <源路径>]`——让层级成为可被证伪的声明。
-3. **embedded** —— catalog 未安装 · 该角色的源路径不在其中 · `name:` 校验不相等 ⇒ 内嵌浓缩 prompt（**更弱的专家**）。**层级回显必须带上原因**——静默降级会让用户以为派的是真专家：`<组>/<角色>：[embedded: agency-agents 未安装]` · `<组>/<角色>：[embedded: <角色> 在 <源路径> 解析不出]`。只报事实、不给命令——装不装、怎么装 catalog 是用户的事（见 README）。前端「你是前端开发者。用现代 Web 技术实现该任务，遵循代码库现有模式，兼顾可访问性与响应式设计。」后端「你是后端架构师。按现有 API 模式、错误处理约定和数据模型实现该任务，保证向后兼容。」数据「你是数据工程师。按现有 schema 约定、迁移模式和查询优化实践实现该任务。」基础设施「你是 DevOps 自动化工程师。按现有 IaC 模式、CI/CD 约定和部署实践实现该任务。」通用小修「你是最小修改工程师。只用最小可能的 diff 实现指定任务；除非任务明确要求，不加抽象、配置、依赖或特性；不碰无关代码。」
-   **`embedded` 层的组，review 时逐文件读完整 diff，不得抽查。**
+**两层都解析不出 ⇒ 停机**：输出「缺前置：<角色> 未注册、且在 ~/.agency-agents 的 <源路径> 解析不出——安装见 README」，本轮不派该组、不造替身专家。装 catalog 是用户的事；一个两行 persona 的替身写出的实现，review 无从对照真专家的产出。
 
 ## 输出模板
 
@@ -242,7 +241,7 @@ openspec-cn validate "<name>" --strict     # 只校验规格 markdown
 
 - **组 A — 后端**（3 个任务：1, 2, 5）· 专家：Backend Architect [registered] · 写集：`backend/`, `api/`
 - **组 B — 前端**（2 个任务：3, 4）· 专家：Frontend Developer [local: engineering/engineering-frontend-developer.md] · 写集：`frontend/`
-- **组 C — 测试**（2 个任务：6, 7）· 专家：Minimal Change Engineer [embedded] (fallback) · 写集：`tests/`
+- **组 C — 测试**（2 个任务：6, 7）· 专家：Minimal Change Engineer [registered] · 写集：`tests/`
 
 写集两两不相交 ✓  依赖：A → C（测试依赖后端就位）；B 独立
 波次 1：组 A、组 B 并行   波次 2：组 C
