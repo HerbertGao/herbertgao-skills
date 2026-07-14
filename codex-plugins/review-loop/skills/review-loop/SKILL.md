@@ -69,7 +69,8 @@ Each term's rules live in its section. This list is glosses and pointers.
 - **the evaluator** — the small model a completion harness runs at each turn's end, literally checking the predicates in the last section, reading only the transcript. No harness ⇒ no evaluator; the main agent applies the same predicates to itself and the closing honesty boundary bites harder.
 - **bot** — an always-on PR bot (BugBot, Copilot review) if the repo has one. The loop never invokes one; it merges findings that already exist. No bot ⇒ nothing to merge.
 - **fix-induced blocker** — a blocker or major **in the triage list** (post-grading, post-dedup) whose location falls inside the **previous** round's `Landed:`. On prose, location overlap is not enough — the finding must **quote text `Landed:` added or changed**, because §3 mandates whole-section rewrites and a cold reader noticing a *pre-existing* rule inside a rewritten section is not a regression. `Regression:` is the size of that intersection, and the evaluator recomputes it from the two artifacts rather than reading the number.
-- **cap / K / patch count** — three numbers. The **round cap** (default 10) and **K** (consecutive not-run rounds before an absent third slot is declared structural, default 2) live here; Termination holds their behaviour. The **patch count** (3) lives in §3: a fix landing in a prose section (one heading-bounded block) that has already taken 3 of this loop's insertions must rewrite the section instead of adding a caveat.
+- **tool record** — the platform-written record of a tool call in this run (Claude Code: the session log; generically, whatever the platform itself logs). A path "has a tool record" when it appears in the arguments or output of a call this run actually made — the check is a lookup in that log, never a recollection.
+- **cap / patch count** — two numbers. The **round cap** (default 10) lives here; Termination holds its behaviour. The **patch count** (3) lives in §3: a fix landing in a prose section (one heading-bounded block) that has already taken 3 of this loop's insertions must rewrite the section instead of adding a caveat.
 
 ## Verdict normalization
 
@@ -101,16 +102,18 @@ Dispatch all three slots **in parallel, in one message**. Each prompt is self-co
 **The three slots:**
 
 - **Code Reviewer** — correctness, contracts, edges, security, consistency with existing code. **Mandatory deliverable — the guard checklist**: every guard/check point with `file:line`, over the same categories and scope as §1b's enumeration. This is the loop's **weak anchor**. For every checkpoint consuming a **set dimension**, add three columns — `declared-coverage set` │ `actually-effective set` │ `equal?` — because writing the two sets side by side turns "the guard covers less than exists" into a comparison the reviewer cannot skip past.
-  **The prior-fix context primes the CR's *findings*, never its *enumeration*.** The checklist is produced over full scope, un-primed, every round. A checklist is an enumeration, not a judgment — and a CR told "round N−1 fixed region R, hunt *new* blockers" under-enumerates R, so the anchor thins over exactly the region the loop's own fix just touched, `anchor ∖ table` comes back empty there, and the loop stops without ever re-anchoring it. **That is the mechanism by which a loop certifies the defect it just introduced.**
+  **The prior-fix context primes the CR's *findings*, never its *enumeration*.** The checklist demand is the same fixed wording every round, and it sits *before* any prior-fix context in the CR prompt — the enumeration instruction itself never mentions rounds or regions. A checklist is an enumeration, not a judgment — and a CR told "round N−1 fixed region R, hunt *new* blockers" under-enumerates R, so the anchor thins over exactly the region the loop's own fix just touched, `anchor ∖ table` comes back empty there, and the loop stops without ever re-anchoring it. **That is the mechanism by which a loop certifies the defect it just introduced.**
   **A CR APPROVE without its deliverable is not a pass** → the slot is `not-run(missing guard checklist)`. One exception: an artifact with no guard points at all (a pure-prose proposal) — an empty checklist **that states the scope it enumerated over** counts as produced.
 - **Reality Checker** — dispatched per §1b.
 - **Independent Reviewer** — Platform Adapter. It returns prose by default; the prompt must explicitly demand the final verdict line.
 
-**Resolution ladder** — how a named lane or fixer (CR / RC / MCE / ASE) becomes a running subagent. Four tiers, resolved per lane at dispatch; **echo the tier**. The Independent Reviewer never enters the ladder: a fresh adversarial prompt *is* its persona.
+**Resolution ladder** — how a named lane or fixer (CR / RC / MCE / ASE) becomes a running subagent. Three tiers, resolved per lane at dispatch; **echo the tier**. The Independent Reviewer never enters the ladder: a fresh adversarial prompt *is* its persona.
+
+**The catalog is a prerequisite the user installs (per the README); the loop reads it and never writes to it — and neither does anything it dispatches**: a reviewer that stamps `APPROVE` on code comes from a checkout the user chose to trust, at a revision they control. Missing ⇒ the lane degrades and says so; the loop never installs it.
 
 **Two identifiers, named apart, because conflating them silently drops a lane through every tier:** the **type-name** is what a platform registers (`Code Reviewer`); the **catalog path** is where the file lives (`engineering/engineering-code-reviewer.md`). The catalog's frontmatter `name:` is the *type-name*, not the filename slug.
 
-| lane | type-name (registered tier) | catalog path (local / fetched tiers) |
+| lane | type-name (registered tier) | catalog path (local tier) |
 |---|---|---|
 | CR | `Code Reviewer` | `engineering/engineering-code-reviewer.md` |
 | RC | `Reality Checker` | `testing/testing-reality-checker.md` |
@@ -122,13 +125,12 @@ Dispatch all three slots **in parallel, in one message**. Each prompt is self-co
 | tier | resolve | notes |
 |---|---|---|
 | **registered** | the lane's **type-name** is an installed subagent type → dispatch directly | strongest |
-| **local** | the lane's **catalog path** under `~/.agency-agents/` (a git clone of the catalog; nests two levels). Confirm the file's frontmatter `name:` equals the lane's type-name. Embed the body, minus frontmatter, as a generic subagent's persona | full source, no network |
-| **fetched** | cache miss → `mkdir -p ~/.agency-agents/.cache && curl -fsSL --max-time 10 https://cdn.jsdelivr.net/gh/msitarzewski/agency-agents@main/<catalog path> -o ~/.agency-agents/.cache/<lane>.md`, validate (frontmatter `---` + `name:`), then as `local`. Fetch to `.cache/`, **not** into the clone's working tree — a `git clean` there evicts it and `git status` shows junk. Validation fails ⇒ delete the file, fall through. **Fixed registry lanes only** — an open-ended §1c augment has no derivable path ⇒ SKIP | same content as local |
-| **embedded** | network down or validation fails → the condensed prompt below | **weaker reviewer: either expert slot (CR / RC) at this tier caps the terminal at `APPROVE-DEGRADED (<lane>: embedded fallback)`.** A fixer or augment (MCE / ASE) at this tier is echoed but does **not** cap — its output is re-reviewed next round |
+| **local** | the lane's **catalog path** under `~/.agency-agents/` (a git clone of the catalog; nests two levels). Confirm the file's frontmatter `name:` equals the lane's type-name. Embed the body, minus frontmatter, as a generic subagent's persona. **The marker carries the path** — `[local: <catalog path>]` — so the tier is a claim a reader can falsify | full source, no network |
 
-**Supply-chain note**: `fetched` pulls `agency-agents@main`, which is mutable — the frontmatter check validates shape, not provenance. An environment that will not trust remote content pre-clones the catalog (making `local` hit) or relies on `embedded`, whose prompts ship in this file.
 
-**Embedded prompts.** *CR* — "You are an adversarial code reviewer. Check correctness, contracts, security, consistency with existing code, and edge cases. Produce a guard/check checklist with `file:line` entries and the three set-dimension columns. End with the findings list and, as the final line, exactly one verdict token." *RC* — "You are a failure-enumeration reviewer. List every guard, early-return, error branch, exception catch, assert, validation, exit-code, state transition and claimed-pass point in a table with `file:line`. For each row instantiate the applicable failing inputs; record observed behaviour vs contract claim and a terminal state. End with the findings list and one final verdict token." *MCE* — "You are a minimal-change engineer. Fix only the specified finding with the smallest possible diff. Add no abstractions, config, dependencies or features unless the finding's correctness requires it. Touch nothing unrelated." *ASE* — "You are a security reviewer. Check injection, auth bypass, data exposure and OWASP top-10 issues in the changed code. Report findings with severity and `file:line`." *Independent Reviewer* (its standing prompt, not a fallback) — "You are an independent adversarial reviewer with no prior commitment to the design. Find what the author missed: self-contradiction, cross-file drift, forward fragility, ambiguity, scope creep, security. Report findings with severity and `file:line`. End with the findings list and one final verdict token."
+**A lane that resolves at neither tier halts the run** — `PREREQUISITE-MISSING (<lane> — see README)`, a hand-back like `OUT-OF-SCOPE-PENDING`, not a verdict: the catalog is a prerequisite the user installs, and a run without a real reviewer has nothing to certify with.
+
+**Independent Reviewer standing prompt** — "You are an independent adversarial reviewer with no prior commitment to the design. Find what the author missed: self-contradiction, cross-file drift, forward fragility, ambiguity, scope creep, security. Report findings with severity and `file:line`. End with the findings list and one final verdict token."
 
 **Deterministic strong anchors** — optional to run the loop, **required for a clean `APPROVE`**; findings-only. The main agent runs these **before** dispatching; hits become §2 findings, artifacts become §1b's anchors. Three forms:
 
@@ -141,12 +143,12 @@ Dispatch all three slots **in parallel, in one message**. Each prompt is self-co
 **Echo this status block every round.** A failed subagent returns empty, indistinguishable from "no problems" — so an empty slot never defaults to pass. Slots carry the **normalized** verdict plus the resolved tier.
 
 ```text
-Slots: Code Reviewer=APPROVE [registered] | Reality Checker(§1b)=CHANGES-REQUESTED [local] | Independent Reviewer=not-run(empty) [cross-family]
+Slots: Code Reviewer=APPROVE [registered] | Reality Checker(§1b)=CHANGES-REQUESTED [local: testing/testing-reality-checker.md] | Independent Reviewer=not-run(empty) [cross-family]
 Augment: none
 Scope fence: agreed scope anchored | out-of-scope findings: 0
 Anchors: ①strong(invariant cmd#1) ⑤strong(grep cmd#2) ④weak
 Simplicity: net +18 this round (measured, from Landed:) | would-remove: -140 cumulative | over-eng: 1 open
-Legibility: unfollowable 0 | undefined 2 | restated 1
+Legibility: unfollowable 0
 Spot-audit: row 14 | re-ran empty-input | observed exit 1 vs claim exit 0
 Landed: src/auth.py:91-152, src/cli.py:12-19
 Regression: 2 of 7 (triage blocker/major ∩ last round's Landed) | hits: src/auth.py:96, src/auth.py:131
@@ -179,7 +181,7 @@ The last two matter more than they look: **the round that passes is the round th
 
 ### 1b. Failure enumeration (Reality Checker slot)
 
-Semantic reviewers verify the happy path plus already-written assertions and systematically miss **failure paths × edges × false-green** — nothing forces them to enumerate, and reading beside green tests primes "it was tested" into "it is settled". The RC slot removes both causes: a forced enumeration structure, fed de-polluted input.
+Semantic reviewers verify the happy path plus already-written assertions and systematically miss **failure paths × edges × false-green** (a false green: a signal that reports success while the thing it certifies is broken or unexercised) — nothing forces them to enumerate, and reading beside green tests primes "it was tested" into "it is settled". The RC slot removes both causes: a forced enumeration structure, fed de-polluted input.
 
 **De-polluted input.** The diff + truth source marked **to-be-proven**; all evaluative framing stripped (no "already APPROVE'd N rounds", "tests pass", "fixed last round"). The one prior-round artifact it gets is a neutral **row ledger** — `row ID + boolean "did this round's fix touch this row or its dependencies"`, terminal-state values and praise excluded (`verified-safe` is itself a verdict; re-feeding it primes re-confirmation). The ledger answers *"which rows need re-verification"*, never *"which rows may be skipped"*.
 
@@ -216,7 +218,7 @@ Two honesty rules. **The executor sets the anchor strength** — the RC hand-lis
 
 **Every row ends in exactly one of four terminal states** (the gate checks terminal states, not "has a disposition"); rows that became findings merge into §2:
 
-- **`verified-safe`** — verified against its applicable failing inputs, behaviour matches contract, **evidence attached** (which inputs + observed vs claim). A bare label counts as `unresolved`. **The main agent spot-audits at least one claimed row per round** (the highest-consequence one): re-check its evidence against the truth source, re-running the cheapest applicable failing input, and **echo it**. A round with any `verified-safe` row and no `Spot-audit:` line audited nothing — and the spot-audit is the only thing standing between a fabricated evidence field and a pass.
+- **`verified-safe`** — verified against its applicable failing inputs, behaviour matches contract, **evidence attached** (which inputs + observed vs claim). A bare label counts as `unresolved`. **The main agent spot-audits at least one claimed row per round** — among `verified-safe` rows, the one whose failing input is cheapest to actually re-run (a command over a code walk, a walk over a judgment); state the pick in the `Spot-audit:` line: re-check its evidence against the truth source, re-running the cheapest applicable failing input, and **echo it**. A round with any `verified-safe` row and no `Spot-audit:` line audited nothing — and the spot-audit is the only thing standing between a fabricated evidence field and a pass.
 - **`fixed`** — became a finding, fixed (pointer attached).
 - **`accepted-degraded`** — explicitly demoted or ruled not-applicable, **with an auditable reason keyed to a severity definition**; no named definition ⇒ still `unresolved`.
 - **`unresolved`** — not verified, not fixed, reason doesn't hold, or a terminal state claimed without evidence.
@@ -236,8 +238,7 @@ The main agent may **add** specialists per change domain — along exactly two a
 
 1. **You can name the new distribution** ("frontend-related" is not one).
 2. **The domain is actually touched** — a matrix hit, not a "maybe".
-3. **It resolves to exactly one real specialist.** Primary: the ladder's `local` path match. Fallback for a sub-concept with no filename (`reentrancy` → *Blockchain Security Auditor*): `grep -ril "<term>" ~/.agency-agents --include="*.md"` — a **candidate generator only**. Both paths end in the same confirm: read each candidate's frontmatter `name:`, confirm the role *is* the domain, drop anything without frontmatter (that check is what rejects READMEs and decoys). Then: **`>1` → prefer the candidate whose frontmatter `name:` *is* the domain** (`accessibility` → `Accessibility Auditor`); still `>1` → **dispatch the top two and merge their findings** — they are findings-only, one extra augment costs a round and a wrong SKIP costs the finding. **`0` confirmed → SKIP.**
-   *("Disambiguate by division directory" is not a rule: on `accessibility` the grep returns 33 frontmatter-confirmed candidates across 9 divisions and no division wins. An agent stuck there has no honest exit and will write a false `expert unavailable` — which the disclosure predicate accepts, because it checks the disclosure is *present*, never that it is *true*.)*
+3. **It resolves to exactly one real specialist.** Primary: the ladder's `local` path match. Fallback for a sub-concept with no filename (`reentrancy` → *Blockchain Security Auditor*): `grep -ril "<term>" ~/.agency-agents/*/ --include="*.md" 2>/dev/null` — the `*/` keeps it inside the division directories the ladder resolves from, and an empty or errored listing is `0 confirmed` — a **candidate generator only**. Both paths end in the same confirm: read each candidate's frontmatter `name:`, confirm the role *is* the domain, drop anything without frontmatter (that check is what rejects READMEs and decoys). Then: **`>1` → prefer the candidate whose frontmatter `name:` *is* the domain** (`accessibility` → `Accessibility Auditor`); still `>1` → **dispatch the top two and merge their findings** — they are findings-only, one extra augment costs a round and a wrong SKIP costs the finding. **`0` confirmed → SKIP.**
 
 **Two ways to skip a matrix hit, graded apart:**
 
@@ -246,15 +247,15 @@ The main agent may **add** specialists per change domain — along exactly two a
 | the expert genuinely doesn't exist (not registered, not in the catalog) | not a finding — **disclose it**: the `Augment:` line carries `expert unavailable` **with the grep command and its candidate count pasted**, and the terminal token carries `(<domain>: expert unavailable, generic coverage only)` |
 | the expert was resolvable and you skipped anyway | a **`major` you did not fix** — justify it like any other |
 
-Augment findings feed §2 only — no slot, no verdict, and they never erase the CR checklist anchor (even the correctness-class ASE stays findings-only). **Echo** each with its tier: `Augment: +Blockchain Security Auditor(knowledge:reentrancy)[local]`; else `Augment: none`.
+Augment findings feed §2 only — no slot, no verdict, and they never erase the CR checklist anchor (even the correctness-class ASE stays findings-only). **Echo** each with its tier: `Augment: +Blockchain Security Auditor(knowledge:reentrancy)[local: security/security-blockchain-security-auditor.md]`; else `Augment: none`.
 
-**Method-axis backfill when a cross-family third slot is structurally absent**: a different model family has no same-family substitute. A method-axis specialist (Software Architect for the structural view) may backfill to reduce the miss rate, but **never lifts** the `(<slot> structural: …)` degrade — increment-only, no slot.
+**Method-axis backfill when a cross-family third slot is absent**: a different model family has no same-family substitute. A method-axis specialist (Software Architect for the structural view) may backfill to reduce the miss rate, but **never lifts** the third-slot-absent degrade — increment-only, no slot.
 
 ### 1d. Scope fence (mandatory when full requirement context exists)
 
 Prevents scope creep laundered as bug-fixing: reviewers propose "robustness", triage fixes by default, and the loop ends having built features nobody asked for.
 
-**Raise the fence, once at start.** If the context contains a complete requirement description the AI and user settled on (explicit goal / acceptance / boundaries — not one vague instruction), extract and restate an **agreed scope** list: what's in, what's out, which contracts the user already approved. **The test for "complete": you can write that list without inventing a single boundary.** If writing it forces a guess, **skip the fence** (echo the skip string) rather than fence on a guess. Never block, never invent scope. **A skipped fence attaches `[scope-fence: not raised]` to the terminal token** — the opt-out is the main agent's own judgment, unfalsifiable by anything downstream, so it costs a disclosure rather than nothing.
+**Raise the fence, once at start.** If the context contains a complete requirement description the AI and user settled on (explicit goal / acceptance / boundaries — not one vague instruction), extract and restate an **agreed scope** list: what's in, what's out, which contracts the user already approved. **The test for "complete": every item on the list quotes a sentence the user actually wrote in this session** — a boundary you cannot quote is a boundary you invented. If writing it forces a guess, **skip the fence** (echo the skip string) rather than fence on a guess. Never block, never invent scope. **A skipped fence attaches `[scope-fence: not raised]` to the terminal token** — the opt-out costs its disclosure, and a fence raised on unquotable boundaries is visible to anyone who asks for the quotes.
 
 **The scope binary** (triage runs it once per blocker/major):
 
@@ -263,7 +264,7 @@ Prevents scope creep laundered as bug-fixing: reviewers propose "robustness", tr
 
 **Handling: don't auto-fix, ask immediately, never launder.** On a hit, pause and report: the finding, why it crosses, the minimal in-scope fix vs the crossing fix, and a request for authorization. Before authorization: **no fix dispatch, and no silent demotion to `accepted-degraded` to keep the round clean** — that is one more false-green. Authorized → scope updates, finding becomes in-scope. Declined → `accepted-degraded`, reason "out of scope, user declined".
 
-**Prompt landing, every round**: reviewer prompts carry the agreed scope + the `[out-of-scope]` tag demand; the §3 fix spec pins "only touch X, add no new Y". Hard-pause semantics live in Termination.
+**Prompt landing, every round**: reviewer prompts carry the agreed scope + the `[out-of-scope]` tag demand; the §3 fix spec pins "only touch X, add no new Y". The hard pause is Termination's `OUT-OF-SCOPE-PENDING` row.
 
 ### 1e. Simplicity counter-pressure (findings-only, no slot)
 
@@ -295,6 +296,8 @@ The end state is a **patch pile**: a document only the loop that produced it can
 
 > *Read exactly one file: `<artifact>`. Do not read git history, do not read other files, do not search the web. Answer only from that text.*
 
+A return that cites any file, commit, or conversation outside the artifact is a warm read — discard it and re-dispatch once (the citations are in the return; the check is a read, not trust).
+
 Ask these five, and **let it pick its own targets in 2 and 3** — if you pick them, you are the exam-setter, the graded party, and the most primed actor in the loop:
 
 1. What is this for, and when should I use it — and when should I *not*?
@@ -305,15 +308,12 @@ Ask these five, and **let it pick its own targets in 2 and 3** — if you pick t
 
 **Its return goes into the transcript verbatim** (the evidence rule; a `Legibility:` line with no pasted return is `not run`).
 
-**Three counters over the artifact** (you, no dispatch):
+**Two finding kinds from the read** (the finding is always the reader's quote — never a count of your own):
 
-| counter | counts | why it exists |
-|---|---|---|
-| **undefined** | terms the reader listed in Q4 | a term only the loop understands must be reverse-engineered by the next reader |
-| **unfollowable** | rules the reader listed in Q5 | **a rule no reader can satisfy is decoration — worse than an absent rule, because it manufactures the appearance of a check that isn't there** |
-| **restated** | rules stated in more than one place in words that don't match | the patch pile's signature: N near-copies means no copy is authoritative, and a stale copy silently reverses a decision. **Fix: name one statement authoritative, point the others at it** |
+- **unfollowable** — a rule the reader quoted in Q5. **A rule no reader can satisfy is decoration — worse than an absent rule, because it manufactures the appearance of a check that isn't there.** `major`, fixed by default; the `Legibility:` line carries this count because ⑪ bites on it.
+- **undefined** — a term the reader quoted in Q4. Findings-only, riding triage: a term only the loop understands must be reverse-engineered by the next reader.
 
-**On the loop's first prose round, run all three over the whole artifact, not just the diff** — a diff-scoped pass can only slow the next pile, never clean the one you came for.
+**On the loop's first prose round, run the read over the whole artifact, not just the diff** — a diff-scoped pass can only slow the next pile, never clean the one you came for.
 
 The counts are not scores (two honest runs won't agree); **the finding is the reader's quote** — the number only makes it visible in the echo.
 
@@ -338,11 +338,11 @@ Merge findings from all sources — three slots, anchors, augments, §1e, §1f, 
 | fix target | dispatch | minimality metric |
 |---|---|---|
 | code — local bug, single module, mechanical per spec | **MCE** (ladder) | smallest textual diff |
-| code — cross-module / architecture or data-flow rethink / schema or API migration / needs a test strategy | the strongest available coding agent, **never the third slot's agent**: it is dispatched review-only and cannot apply a fix — and if it did, next round it would review its own family's output, destroying the one distribution it exists to supply. Claude Code: a `general-purpose` subagent with the full context | smallest coherent change |
+| code — cross-module / architecture or data-flow rethink / schema or API migration / needs a test strategy | a coding agent other than the third slot's (pick one and name it in the fix spec — the constraint is the exclusion, not a ranking): it is dispatched review-only and cannot apply a fix — and if it did, next round it would review its own family's output, destroying the one distribution it exists to supply. Claude Code: a `general-purpose` subagent with the full context | smallest coherent change |
 | prose — mechanical (wording, format, filling in an already-decided design) | main agent edits directly | — |
 | **prose — semantic** (a rule wrong / ambiguous / unfollowable / restated) | **never MCE** — its persona ("smallest possible diff, touch nothing unrelated") is the patch generator and will fight the spec. Main agent, or a generic subagent carrying the rewrite contract | **smallest semantic delta, textual diff unbounded** |
 
-**The rewrite contract** (pinned into every prose-semantic fix spec): rewrite the containing **section from its purpose** — never add a caveat to a section that has already taken 3 of this loop's insertions (Terms: patch count). Every rule keeps exactly what it required before, except the rule the finding names. One authoritative statement per rule; the others point at it. Each rule carries, **in one clause**, the failure it prevents — a rule with no why is the one the next reader deletes as noise, and then the loop rediscovers the hole. **That clause is a clause, not a paragraph**: a rule escorted by an argument against the draft it replaced is written for the reviewer approving the document, not the agent executing it, and it is how a thousand words of rule becomes three thousand words of document. Land each rule **where a reader needs it**, not where the finding was found. **A re-expression that preserves what the rules require is in-scope by construction** — it does not trip §1d; changing what a rule requires is a scope change and does.
+**The rewrite contract** (pinned into every prose-semantic fix spec): rewrite the containing **section from its purpose** — never add a caveat to a section that has already taken 3 of this loop's insertions (Terms: patch count). Every rule keeps exactly what it required before, except the rule the finding names — and making an *unfollowable* rule followable is in-scope by construction: a requirement nobody could satisfy was never a requirement. One authoritative statement per rule; the others point at it. Each rule carries, **in one clause**, the failure it prevents — a rule with no why is the one the next reader deletes as noise, and then the loop rediscovers the hole. **That clause is a clause, not a paragraph**: a rule escorted by an argument against the draft it replaced is written for the reviewer approving the document, not the agent executing it, and it is how a thousand words of rule becomes three thousand words of document. Land each rule **where a reader needs it**, not where the finding was found. **A re-expression that preserves what the rules require is in-scope by construction** — it does not trip §1d; changing what a rule requires is a scope change and does.
 
 **Echo `Landed:` after the round's fixes land** — the diff they actually produced (`git diff --stat`, or the edit's own reported ranges), **never the ranges the spec aimed at**. Aim is a prediction the fixing party authors: declare two lines, ship a two-hundred-line rewrite, and next round's findings truthfully fall outside it — no lie required. A diff is a fact anyone can re-derive, and it is in **post-fix coordinates**, the same ones next round's findings use, so an insertion cannot push the code it broke out of its own footprint.
 
@@ -352,17 +352,11 @@ Merge findings from all sources — three slots, anchors, augments, §1e, §1f, 
 
 ### 4. Re-review
 
-Back to §1, three slots in parallel — the third slot may recover mid-run. Its retry policy, stated once: a **transient** not-run is re-dispatched every round, including when both experts already pass; a missing verdict is not a pass. Only a **structural** absence, or an already-returned verdict, ever ends the retry.
+Back to §1, three slots in parallel — the third slot may recover mid-run: a slot that returned nothing is `not-run(empty)`, re-dispatched next round.
 
 ## Termination
 
-**Classifying a third-slot non-verdict** (anything unparseable = `not-run`):
-
-- **Transient** — empty return, or ran without a verdict line → retry next round with a stricter prompt; never stop early on it, never degrade because of it.
-- **Structural** — not installed, not logged in, quota, no such reviewer on this platform; won't self-heal this session.
-- **Can't tell** → treat as transient (a misjudgment costs rounds, never a false pass) — bounded by K.
-
-**Mechanical escalation**: `not-run` for **K consecutive rounds** (an explicit not-installed / not-logged-in / quota signal is structural on round one) → **force structural**, written `<slot> structural: <reason>`. Escalation converts an infinite retry into an honest degraded termination, never a false pass. **The same classification and K apply to the CR and RC**: a permanently-unresolvable expert degrades honestly rather than burning the cap on a token that names the wrong cause.
+**A third-slot non-verdict** (anything unparseable = `not-run`): re-dispatch it next round with a stricter prompt; a round that ends with the third slot still silent discloses it — the terminal carries `[third-slot: not-run]`, and a clean `APPROVE` is out of reach (the tier table). No retry ceiling, no escalation machinery: the disclosure is the whole mechanism.
 
 **Pass gate** — every pass-class termination requires all three:
 
@@ -379,12 +373,14 @@ Back to §1, three slots in parallel — the third slot may recover mid-run. Its
 
 | condition | token |
 |---|---|
+| a lane resolves at neither `registered` nor `local` | **`PREREQUISITE-MISSING (<lane> — see README)`** — a hand-back, not a verdict; the user installs the prerequisite (or declines) and the run resumes or ends there |
 | an unadjudicated out-of-scope blocker/major (§1d) | **`OUT-OF-SCOPE-PENDING (N left)`** — no token, no suffix; **outranks everything, including the cap**. Halt for the user; the harness stops auto-continuing. If the user never replies, the loop stays halted — **no timeout converts silence into consent.** No fence up ⇒ never triggers |
 | `Regression:` ≥1 for **two consecutive rounds** | **`NOT-CONVERGED (fix-induced blockers in 2 consecutive rounds; N items left, listed)`** — a terminal hand-back, **not a pass**. The loop is not iterating toward a pass; its fixes are producing the next round's findings. **It fires with or without a cap**, which is what closes the "delete the cap line to loop until pass" hole. *Two, not three*: a replay of a real six-round run showed a threshold of 3 fires exactly where the loop stopped by exhaustion anyway. And the asymmetry is not close — a false positive costs a hand-back the user overrides in one sentence; a false negative costs another N rounds of the loop certifying the defects it is inserting |
+| a tool record in this run wrote into `~/.agency-agents` | **`CAPPED (catalog self-installed)`** — terminal, not a pass: the personas came from a checkout the loop installed, not one the user chose. A catalog the *user* installs mid-run is theirs, and resolves as `local` from the next round |
 | the pass gate fails, or a slot rejected, **and** rounds remain | no token — **continue** |
 | `net:` > 0 for **two consecutive rounds** | **`APPROVE-DEGRADED (bloat: +N over 2 rounds, no lane removed anything)`** — recompute `net:` from `Landed:` yourself; do not read the number. Three lanes hold a verdict and all three are additive; §1e is the one that subtracts and it holds none. Without a gate that reads this **value**, ⑭ checks only that the line is *present*, and `net: +400` passes every check — the loop's sole anti-bloat instrument reporting the bloat it does not stop |
-| the pass gate holds ∧ all rows ∈ {verified-safe, fixed} ∧ every in-scope category strong-anchored ∧ the in-scope set is non-empty ∧ neither expert slot at `embedded` ∧ the third slot gave a verdict ∧ it is cross-family | clean **`APPROVE`** / `CLEAR` |
-| the pass gate holds, with any of: an `accepted-degraded` row · a weak-only category · an expert slot at `embedded` · the third slot structurally absent · the third slot same-family · an empty in-scope set (pure proposal) · a skipped scope fence | **`APPROVE-DEGRADED (<all reasons, one parenthesis>)`** — e.g. `APPROVE-DEGRADED (weak-reconciliation: incomplete; Independent Reviewer structural: quota)`. **Stop immediately** once the degrade reason is unremovable and the third slot has returned a verdict or been declared structural — another round adds no information. *(Without that precondition, "weak-only category" — the declared steady state — would stop the loop on a slot that was merely transient, which the transient rule forbids.)* |
+| the pass gate holds ∧ all rows ∈ {verified-safe, fixed} ∧ every in-scope category strong-anchored ∧ the in-scope set is non-empty ∧ the third slot gave a verdict ∧ it is cross-family | clean **`APPROVE`** / `CLEAR` |
+| the pass gate holds, with any of: an `accepted-degraded` row · a weak-only category · the third slot absent (disclosed `[third-slot: not-run]`) · the third slot same-family · an empty in-scope set (pure proposal) · a skipped scope fence | **`APPROVE-DEGRADED (<all reasons, one parenthesis>)`** — e.g. `APPROVE-DEGRADED (weak-reconciliation: incomplete; third-slot: not-run)`. **Stop immediately** once the degrade reason is one no further round can change — a pure proposal (the artifact class), a third slot silent through its one re-dispatch, or a weak-only category whose every runnable anchor form was already attempted this run. |
 | the cap is reached with anything unresolved | **`CAPPED (cap-reached, N items left)`**, listing them — terminal, not a pass. Under a harness with no cap set, `CAPPED` does not exist |
 
 **Suffixes on every terminal token** (they are disclosures, never degrade reasons): `[narrative-drift/forward-fragility: not-covered]` unless both have strong-anchor coverage · `[scope-fence: not raised]` if §1d was skipped · `(<domain>: expert unavailable, generic coverage only)` if any round's `Augment:` line said so.
@@ -403,15 +399,15 @@ not restart the turn. A round ending OUT-OF-SCOPE-PENDING halts for the user ins
 A PASS-CLASS token (APPROVE / CLEAR / APPROVE-DEGRADED) additionally requires:
   1. Both experts (Code Reviewer, Reality Checker) returned a verdict, and their returns are
      pasted verbatim in the transcript.
-  2. The third slot returned a parseable verdict, or was determined structural not-run
-     (including via the K-consecutive-round escalation). A transient not-run does NOT satisfy
-     this — keep retrying.
+  2. The third slot returned a parseable verdict, or its absence is disclosed on the
+     terminal as [third-slot: not-run].
   3. The pass gate holds (see Termination). On a pure-prose artifact the §1b clauses are
      satisfied by §1f instead: the cold read ran, its return is pasted, unfollowable = 0.
   4. A clean APPROVE additionally needs: every §1b row verified-safe or fixed, a strong anchor
-     for every in-scope category, neither expert slot at the embedded tier, and a cross-family
-     third-slot verdict. Any weak-only category, accepted-degraded row, embedded expert slot,
-     same-family third slot, skipped scope fence, or pure proposal caps it at APPROVE-DEGRADED.
+     for every in-scope category, and a cross-family third-slot verdict. Any weak-only category,
+     accepted-degraded row, absent third slot, same-family third slot, skipped scope fence, or
+     pure proposal caps it at APPROVE-DEGRADED. A lane resolving at neither tier is
+     PREREQUISITE-MISSING — halt for the user, no token.
 
 ECHO every round: the Slots line with resolved tiers; Augment; Scope fence; Anchors; Simplicity;
 Legibility (on prose rounds); Spot-audit; Landed; Regression. PASTE every slot's return verbatim,
@@ -427,24 +423,25 @@ ROUND CAP 10 (raise it freely; to loop until pass, delete this line — NOT-CONV
 
 **Two short-circuits, first**: a round ending `OUT-OF-SCOPE-PENDING` is halt-for-user — no predicate applies. A round ending **`NOT-CONVERGED` is a terminal hand-back: ②–⑪ are inapplicable and the run ENDS** — it is written *because* items are left, so leaving ③ (a slot rejected) and ⑥ (an unresolved row) armed would restart the turn on the one honest report the loop cannot afford to punish, and with the cap deleted it would never end. Only ⑫ still applies: it checks the token was owed.
 
-**Suffix kinds, once for all predicates**: match tokens by **subject, ignoring parenthesized suffixes**.
+**Suffix kinds, once for all predicates**: match tokens by **subject as a whole token, ignoring parenthesized suffixes** (`APPROVE` does not match `APPROVE-DEGRADED`).
 
 Continue if any holds:
 
 - **①** the latest round is missing the status block, **or any slot's return is not pasted verbatim** (a slot with no pasted return is `not-run`) **or the triage list is not pasted** — these are the artifacts every predicate below reads;
 - **②** the CR or RC slot is empty / `not-run`;
 - **③** any slot is `CHANGES-REQUESTED`;
-- **④** the third slot is `not-run(...)` and the token is not `APPROVE-DEGRADED` with a reason containing the literal `structural` or `transient, cap-reached`;
+- **④** the third slot is `not-run(...)` and the terminal token lacks the `[third-slot: not-run]` disclosure;
 - **⑤** the final token's subject isn't one of `APPROVE` / `CLEAR` / `APPROVE-DEGRADED` / `CAPPED` / `NOT-CONVERGED` — **omitting either terminal from this list makes an honest failure report restart the turn instead of ending it**;
 - **⑥** the §1b table is missing, has an `unresolved` row or a row with no terminal state, or failed the reconciliation — including **no anchor at all**. *(On a pure-prose artifact the table is empty by design: ⑥ is then satisfied by §1f's return being pasted with `unfollowable = 0`, per the anti-vacuum rule.)*
-- **⑦** the token is `APPROVE`/`CLEAR` while the `Anchors:` line shows any in-scope category weak-only, or a row is `accepted-degraded`, or **either expert slot's** tier marker is `[embedded]`, or the third slot is `[same-family]`, or the §1b table is empty;
+- **⑦** the token is `APPROVE`/`CLEAR` while the `Anchors:` line shows any in-scope category weak-only, or a row is `accepted-degraded`, or the §1b table is empty on a code diff;
 - **⑧** drift/fragility has no strong-anchor coverage and the terminal token lacks `[narrative-drift/forward-fragility: not-covered]`;
 - **⑨** the `Augment:` line is missing; or a round declared `expert unavailable` **without pasting the grep command and its candidate count**; or the terminal token lacks the corresponding suffix;
 - **⑩** the `Scope fence:` line is missing (the skip string satisfies it, and adds its suffix); or the round has an unadjudicated out-of-scope blocker/major yet a token was written;
-- **⑪** the `Legibility:` line is missing on a prose round (skip string and `clean` both satisfy it); or it reports `unfollowable ≥ 1` and the terminating round contains no corresponding fix, or a demotion that does not quote the reader's Q5 text;
+- **⑪** the `Legibility:` line is missing on a prose round (skip string and `clean` both satisfy it); or the reader quoted any rule in Q5 and the terminating round contains no corresponding fix, or a demotion that does not quote that Q5 text;
 - **⑫** the `Landed:` or `Regression:` line is missing (the `n/a` strings satisfy them on a fix-less round); **or the `Regression:` count disagrees with the intersection you recompute yourself** — `{the pasted triage list's blockers/majors}` ∩ `{the previous round's Landed:}`; **read the two artifacts, do not read the number** — or two consecutive rounds carry ≥1 fix-induced blocker and the terminating round is not `NOT-CONVERGED`;
 - **⑬** any §1b row is `verified-safe` and the round carries no `Spot-audit:` line naming a row, an input re-run, and an observed-vs-claim;
 - **⑭** the `Simplicity:` line is missing on a code-or-prose round (the skip string and `lean` satisfy it) — without this it is the one echoed field no predicate reads, so an agent that never runs §1e passes every check; **or its `net:` disagrees with the delta you recompute from `Landed:`** — read the artifact, not the number — **or `net:` > 0 for two consecutive rounds and the terminating round carries no `bloat:` degrade reason.**
+- **⑮** a `strong(cmd#N)` on the `Anchors:` line has no matching tool record in this round (that category is **weak** — an anchor nobody can trace is an anchor nobody ran, and it is the sole gate on a clean `APPROVE`); or an expert slot claims a tier without falsifiable evidence — a pathless local marker, a `[local: <path>]` no tool record read, a `[registered]` no dispatch record names — the slot is `not-run(tier unverified)`;
 
 **Cap precedence** (only when a cap is set; `OUT-OF-SCOPE-PENDING` and `NOT-CONVERGED` both outrank it): predicates keep the loop running only below the cap. At the cap, stop unconditionally — but **"stop" ≠ "pass"**: record a pass token only if the gate is still verifiably satisfied; a missing table, a row with no terminal state, or an unverifiable reconciliation always records `CAPPED`. The disclosure suffixes are not waived at the cap.
 

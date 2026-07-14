@@ -1,6 +1,18 @@
 # herbertgao-skills
 
-HerbertGao 的自托管 AI coding skills 仓库。两条安装线：Claude Code 走 plugin marketplace（保留 `codex:codex-rescue` / `subagent_type` 等 Claude 专属调用）；其它平台走 `npx skills add` 装通用版。
+HerbertGao 的自托管 AI coding skills 仓库。两条安装线：Claude Code 走 plugin marketplace（保留 `codex:codex-rescue` / `subagent_type` 等 Claude 专属调用）；其它平台走 `npx skills add` 装通用版（平台中立）。
+
+## 前置：agency-agents
+
+专家优先用宿主已注册的原生 subagent（`registered` 档，不需要 catalog）；解析不到才去读 `~/.agency-agents`——**由你自己 clone、自己控制版本，三个 skill 只读它**。给代码盖 APPROVE、写实现代码的 subagent，来自你选择信任的那份 checkout。装一次：
+
+```bash
+git clone https://github.com/msitarzewski/agency-agents ~/.agency-agents
+```
+
+**没装、且该角色也没注册**时：`review-loop` / `opsx` 在层级回显里带上降级原因与补救命令，退到内嵌浓缩 prompt（更弱的专家，终态因此封顶）；`council` 要靠 catalog 枚举候选席位，凑不出一个真专家就 `STOPPED`。
+
+这些 skill 的 SKILL.md 里带着**运行期字符串**（层级 marker、补救命令、catalog 源路径），它们自己的闸门要逐字匹配——错一个字符，闸门就静默失效。所以它们由 [`contracts/format.json`](./contracts/format.json) 定义、[`scripts/check-format.py`](./scripts/check-format.py) 机械校验（每次 push 跑 CI，发版前再跑一遍），并会拿真实 catalog 验证路径表在干净安装上确实解析得到。
 
 ## 安装
 
@@ -13,24 +25,17 @@ HerbertGao 的自托管 AI coding skills 仓库。两条安装线：Claude Code 
 /plugin install opsx@herbertgao-skills
 ```
 
-更新：`/plugin marketplace update herbertgao-skills` 后重装。若装过旧 marketplace，先 `/plugin marketplace remove claude-skills`。
-
-> `opsx` 需要 `openspec-cn` CLI（plugin 不附带，自行安装）。
+更新：`/plugin marketplace update herbertgao-skills` 后重装。若装过旧 marketplace，先 `/plugin marketplace remove claude-skills`。`opsx` 另需 `openspec-cn` CLI（不附带）。
 
 ### 其它平台（OpenCode / Codex / Trae / Cursor …）— `npx skills add`
-
-通用版 skill 在 [`skills/`](./skills)，平台中立，用 [Vercel Labs 的 `skills` CLI](https://github.com/vercel-labs/skills) 安装：
 
 ```bash
 npx skills add HerbertGao/herbertgao-skills --list          # 列出可装 skills
 npx skills add HerbertGao/herbertgao-skills                 # 装到自动检测的 agent
-npx skills add HerbertGao/herbertgao-skills --agent opencode
 npx skills add HerbertGao/herbertgao-skills --agent codex
 ```
 
-通用版不调 `codex:codex-rescue`、不用 Claude `subagent_type`；各 skill 的角色解析与 fallback 层数不同，见各自 SKILL.md 的 `Platform Adapter` 章节（`review-loop` 的第三审查槽是平台中立的 `Independent Reviewer` + 四层 fallback；`council` 是三层）。[msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents)：对 `review-loop` 是可选的质量增强，对 `council` 是**本体**——一个真专家都解析不出来时 `council` 直接 `STOPPED`，不降格运行。
-
-Codex 亦可走原生 marketplace（`codex-plugins/` 下 `SKILL.md` 是通用版的副本，随 `skills/` 同步，附 `agents/openai.yaml` 入口壳）：
+Codex 亦可走原生 marketplace（`codex-plugins/` 下 `SKILL.md` 是 `skills/` 的逐字节副本，附 `agents/openai.yaml` 入口壳）：
 
 ```bash
 codex plugin marketplace add HerbertGao/herbertgao-skills --ref main
@@ -43,18 +48,17 @@ codex plugin add opsx@herbertgao-skills-codex
 
 | Skill | Claude Code（plugin） | 通用版（`npx skills add`） |
 | --- | --- | --- |
-| `review-loop` | [`review-loop/…/SKILL.md`](./review-loop/skills/review-loop/SKILL.md)：`subagent_type` + Codex rescue lane。 | [`skills/review-loop/SKILL.md`](./skills/review-loop/SKILL.md)：平台中立，`Independent Reviewer` + 逻辑角色名 + 四层 fallback。 |
-| `council` | [`council/…/SKILL.md`](./council/skills/council/SKILL.md)：`subagent_type` + `AskUserQuestion` 拍板。 | [`skills/council/SKILL.md`](./skills/council/SKILL.md)：平台中立，generic subagent + 三层 fallback。 |
-| `opsx`（npx skill 名 `openspec-apply-change-subagent`） | [`opsx/…/SKILL.md`](./opsx/skills/openspec-apply-change-subagent/SKILL.md)：`general-purpose`。 | [`skills/openspec-apply-change-subagent/SKILL.md`](./skills/openspec-apply-change-subagent/SKILL.md)：平台中立，`slugify(name)` + 四层 fallback。 |
+| `review-loop` | [`review-loop/…/SKILL.md`](./review-loop/skills/review-loop/SKILL.md)：`subagent_type` + Codex rescue lane。 | [`skills/review-loop/SKILL.md`](./skills/review-loop/SKILL.md)：第三审查槽换成平台中立的 `Independent Reviewer`。 |
+| `council` | [`council/…/SKILL.md`](./council/skills/council/SKILL.md)：`subagent_type` + `AskUserQuestion` 拍板。 | [`skills/council/SKILL.md`](./skills/council/SKILL.md)：generic subagent。 |
+| `opsx`（npx skill 名 `openspec-apply-change-subagent`） | [`opsx/…/SKILL.md`](./opsx/skills/openspec-apply-change-subagent/SKILL.md)：`general-purpose`。 | [`skills/openspec-apply-change-subagent/SKILL.md`](./skills/openspec-apply-change-subagent/SKILL.md)：按 catalog 源路径 + 角色名解析。 |
 
-分界线：**有没有一份写出来的产物**。`review-loop` 撕**已经写出来的东西**——OpenSpec 变更、提案、spec、diff，**纯散文提案也归它**；`council` 判**还没写下任何产物**的开放决策（选型 / 架构 / 要不要做）。先 council 定方向，再 review-loop 撕产物。
+角色解析梯：`review-loop` / `opsx` 是 `registered → local → embedded`；`council` 用自己的一套词 `registered → catalog → synthesized`——`synthesized`（自撰 persona）最多一席、且不能当反方席，一个真专家都解析不出来就 `STOPPED`。
+
+分界线：**有没有一份写出来的产物**。`review-loop` 撕**已经写出来的东西**——OpenSpec 变更、提案、spec、diff，纯散文提案也归它；`council` 判**还没写下任何产物**的开放决策（选型 / 架构 / 要不要做）。先 council 定方向，再 review-loop 撕产物。
 
 语言约定：`council` 与 `review-loop` 全线英文（避免中英孪生漂移）；`opsx` 全线中文（配 openspec-cn）。
 
-`review-loop` 有两条**站桩的反压**，防的是循环自己的产出物变质——因为循环是**只插不删**的：
-
-- **简洁性（ponytail 透镜）**：每一轮修复都在加代码，严重度在排空、行数在爬升，而没有任何一条审查线看得见「臃肿」。它把这件事变成一个数字（`net: -N`）。
-- **可读性（冷读透镜，§1f）**：当被 review 的是**散文**（spec / 提案 / ADR / OpenSpec 变更 / SKILL.md / README）时，每一轮的修复会落在「发现问题的那一处」而不是「读者需要它的那一处」，循环里现造的术语从不定义，规则的**理由**被压掉——终态是一堆**只有产出它的那个循环才读得懂的补丁**。它派一个**没看过这个循环**的冷读者，只给它文档本身，问五个问题（这是干什么的？什么时候不该用？改 X 要动哪儿？哪些术语没定义？**哪些规则你根本没法遵守？**）。最后一问不是文风问题：**一条读者无法满足的规则就是装饰，而 spec 里的装饰比缺一条规则更糟——它制造了一道并不存在的闸门的假象。**
+**哪份是权威**：`skills/<skill>/SKILL.md` 是 SOT。`codex-plugins/` 下是它的**逐字节副本**（`check-format.py` fail-closed 地守着）。`<plugin>/` 下的 Claude 版是**手工维护的平行副本**——它只应在 Platform Adapter 章节（`subagent_type` / `general-purpose` / `codex:codex-rescue`）与 frontmatter 上与 SOT 不同，**其余规则必须语义对等，但这一条目前只有人在守，没有机器在守**。改规则时两边都要动。
 
 ## 结构
 
@@ -63,10 +67,7 @@ herbertgao-skills/
 ├─ .claude-plugin/marketplace.json   # Claude Code marketplace
 ├─ review-loop/ · council/ · opsx/   # Claude Code plugin（各自 SOT；review-loop 含 codex:codex-rescue）
 ├─ skills/                           # 通用版 SOT（npx skills add 安装源）
-│  ├─ review-loop/SKILL.md
-│  ├─ council/SKILL.md
-│  └─ openspec-apply-change-subagent/SKILL.md
-├─ codex-plugins/                    # Codex 原生入口：SKILL.md 为 skills/ 的副本，附 skills/<skill>/agents/openai.yaml
+├─ codex-plugins/                    # Codex 原生入口：SKILL.md 为 skills/ 的逐字节副本 + agents/openai.yaml
 ├─ .agents/plugins/marketplace.json  # Codex repo-local marketplace
 └─ scripts/                          # 发布/同步脚本
 ```
@@ -77,7 +78,7 @@ herbertgao-skills/
 2. `<plugin>/skills/<skill>/SKILL.md` — Claude 版 SOT
 3. `.claude-plugin/marketplace.json` — 追加一条，否则 `/plugin install` 装不上
 4. `skills/<skill>/SKILL.md` — 通用版 SOT（平台中立）
-5. `codex-plugins/<plugin>/` — `.codex-plugin/plugin.json` + `skills/<skill>/SKILL.md`（第 4 条的逐字节副本，随 `skills/` 同步）+ `skills/<skill>/agents/openai.yaml`
+5. `codex-plugins/<plugin>/` — `.codex-plugin/plugin.json` + `skills/<skill>/SKILL.md`（第 4 条的逐字节副本）+ `skills/<skill>/agents/openai.yaml`
 6. `.agents/plugins/marketplace.json` — 追加一条，否则 `codex plugin add <name>@herbertgao-skills-codex` 失败
 
 ## License

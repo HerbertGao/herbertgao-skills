@@ -87,7 +87,7 @@ The proposition goes **verbatim** to every seat; the dispatch prompt carries no 
 | proposition needs splitting | above | the ≥2 decisions it splits into, one refutable sentence each, **plus the axes — at least §1's three — of the one you recommend convening first** (prepay §1's work; cannot list two decisions ⇒ it is not several decisions — convene) |
 | not a council question | fewer than 3 or more than 8 non-opposing axes (§1) | the axes you derived, with named gaps, and which interest lacks a representative |
 | seats exhausted | fewer than 2 compliant seats in a round (§2) | the failed seats' dispatch ids |
-| no real experts: catalog unavailable | zero real experts (§1) | the verbatim `find` output; the message carries `git clone https://github.com/msitarzewski/agency-agents ~/.agency-agents` for the user to run and retry — **do not stop and wait for the clone** |
+| no real experts: catalog unavailable | zero real experts (§1) | the verbatim `find` output; the message states the prerequisite is missing — `~/.agency-agents`, installed by the user per the README — and hands no command: the user's environment is theirs to change |
 | no real experts: none on the opposing axis | no catalog match on that axis (§1) | the `find` output + the candidates you read and why each fails the axis |
 | no real experts: a second axis has no match | a second seat would have to be synthesized (§1) | the two unmatched axes + the listing lines you searched + why each candidate fails each (the raw `find` output alone *misleads* here — it shows a healthy catalog) |
 | cannot run blind | no `Agent` tool here (a skill inside a tool-restricted subagent has none), or no worker type without `Agent`/`Write`/`Edit` | the tool list you do have, and why none of it dispatches a fresh, non-dispatching, non-writing blind worker |
@@ -102,14 +102,16 @@ The proposition goes **verbatim** to every seat; the dispatch prompt carries no 
 - **One seat per named gap.** A seat with no gap merely restates another and thickens the illusion of independent agreement.
 - Below 2 seats mid-run ⇒ `STOPPED (seats exhausted)`.
 
+**The catalog is a prerequisite the user installs (per the README); the council reads it and never writes to it** — a seat that argues a decision comes from a checkout the user chose to trust, at a revision they control (A9 checks the no-write side).
+
 **Enumerate the catalog before naming any seat** — names invented from an axis (`stability-advocate`, `contrarian`) match nothing:
 
 ```bash
-find ~/.agency-agents -type f -name '*.md' \
-  ! -iname 'README*' ! -iname 'CONTRIBUTING*' ! -iname 'SECURITY.md' ! -path '*/.github/*' | sort
+find ~/.agency-agents -mindepth 2 -type f -name '*.md' \
+  ! -iname 'README*' ! -iname 'CONTRIBUTING*' ! -iname 'SECURITY.md' ! -path '*/.github/*' 2>/dev/null | sort
 ```
 
-The exclusions are anchored to exact filenames, not prefixes — a prefix glob would delete the whole `security-*` division. Paste the output.
+The exclusions are anchored to exact filenames, not prefixes — a prefix glob would delete the whole `security-*` division. `-mindepth 2` is where the catalog keeps its agents — a bare root-level `.md` is not part of the checkout the user installed; the `2>/dev/null` turns a missing directory into the empty listing the STOPPED table reads. Paste the output.
 
 Pick candidates per axis; read each frontmatter to confirm it *is* that axis. **Every seat, the DA and every cross-exam dispatch goes to `subagent_type: Explore`** — it has **no `Agent`**, so the run's topology is the star A0 audits and a seat cannot fan out. It does have `Bash`: **a seat can still write**, and nothing prevents it. A9's sidecar sweep is what catches it — that sweep is load-bearing, not belt-and-braces. `general-purpose` is for the auditor alone (it needs `Bash` too, and it needs `Agent` for nothing). Echo the seats; **the format is fixed** (the auditor parses it):
 
@@ -121,7 +123,7 @@ axis 1: considered <path-a>, <path-b> -> seated <path-a> (<one clause: why the o
 opposing: <seat letter>
 ```
 
-- **A seat is its path.** Deduplicate by frontmatter `name:` (a flat-cache copy and its division copy are one agent) — but never *name* a seat by it: the frontmatter carries a display name, not the slug.
+- **A seat is its path.** Deduplicate by frontmatter `name:` (two divisions can carry one `name:` — `engineering/engineering-backend-architect.md` and `integrations/mcp-memory/backend-architect-with-memory.md` are both *Backend Architect*; the seat takes the copy under the division matching its axis) — but never *name* a seat by it: the frontmatter carries a display name, not the slug.
 - **Record who you rejected, not only who you seated.** Which experts enter the room is the largest bias lever in the protocol and otherwise leaves the shortest trace.
 - **Do not pass a model.** The platform records the resolved model on every dispatch; A8 reads it there. A model you *type* is a claim.
 - **At most ONE `synthesized` seat**, tie-breakers included — a self-authored persona is your own words fed back to you and the auditor structurally cannot check it. A second ⇒ `STOPPED (no real experts: a second axis has no match)`. Its text may not contain any option or technology name from the proposition (A0b checks).
@@ -399,7 +401,8 @@ A8  Every §7 field is present (a dropped field is a FAIL, not a vacuous pass) a
     a context-tier suffix (`[1m]`, `[1M]`) and a trailing `-<8 digits>`, count distinct BASE models, and
     **paste the raw→base mapping** so an over-count is visible. `correlated yes` ⇔ `models 1`; a violation ⇒ FAIL
 A9  `workdir` resolves from §0's echo **in the log** (payload ≠ echo ⇒ FAIL) and is not `/`, `$HOME`, or an
-    ancestor of the project root. The payload's `candidate: <n>` equals the candidate's `Candidate:` line
+    ancestor of the project root. No tool call in the log writes into `~/.agency-agents` — the seats come
+    from the user's checkout, so a run that populated it seated agents the user never installed. The payload's `candidate: <n>` equals the candidate's `Candidate:` line
     **and** the highest `n` in `ls workdir/candidate-*.md`; lower ⇒ FAIL (you were handed a rejected draft).
     The candidate has no line-initial terminal verdict and its **Status** reads
     `<token withheld>`; `asked >= min(3, V)` against A4's `V`, and `V > 3` ⇒ the meta-question is in the log
