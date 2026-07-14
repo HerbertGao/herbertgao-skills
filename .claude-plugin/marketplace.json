@@ -12,17 +12,17 @@
     {
       "name": "review-loop",
       "source": "./review-loop",
-      "description": "Adversarial review loop for Claude Code — runs Codex rescue + Code Reviewer + Reality Checker in parallel over your proposal and diff, merges/triages findings, dispatches minimal fixes, and re-reviews until pass or cap. Standing counter-pressures keep its own output honest: a simplicity lens against the bloat an insert-only loop accrues, and a cold-read legibility lens so an iterated review cannot turn a spec into a patch pile only the loop can read. Works on anything already written — an OpenSpec change, a proposal, a spec, a diff, including pure prose; a decision with nothing written yet is council."
+      "description": "Adversarial review loop for Claude Code — runs Codex rescue + Code Reviewer + Reality Checker in parallel over your proposal and diff, merges/triages findings, dispatches minimal fixes, and re-reviews until pass or cap. Standing counter-pressures keep its own output honest: a simplicity lens against the bloat an insert-only loop accrues, and a cold-read legibility lens so an iterated review cannot turn a spec into a patch pile only the loop can read. Works on anything already written — an OpenSpec change, a proposal, a spec, a diff, including pure prose; a decision with nothing written yet is council. Requires the agency-agents catalog at ~/.agency-agents (install per the README); a role it cannot resolve there halts the run rather than standing in a fabricated expert."
     },
     {
       "name": "council",
       "source": "./council",
-      "description": "Multi-perspective decision council for questions with NOTHING WRITTEN yet — seats one agency-agents specialist per named viewpoint gap, collects independent blind positions, numbers the disagreements into cruxes, settles facts only on a criterion quoted from a seat's blind falsifier plus a re-runnable artifact, and sends judgment calls to the human one question at a time. A mandatory fresh-context auditor reconciles every claimed dispatch against the session log and re-runs the commands before any verdict. Self-driving. Something already written is review-loop."
+      "description": "Multi-perspective decision council for questions with NOTHING WRITTEN yet — seats one agency-agents specialist per named viewpoint gap, collects independent blind positions, numbers the disagreements into cruxes, settles facts only on a criterion quoted from a seat's blind falsifier plus a re-runnable artifact, and sends judgment calls to the human one question at a time. A mandatory fresh-context auditor reconciles every claimed dispatch against the session log and re-runs the commands before any verdict. Self-driving. Something already written is review-loop. Requires the agency-agents catalog at ~/.agency-agents (install per the README); a role it cannot resolve there halts the run rather than standing in a fabricated expert."
     },
     {
       "name": "opsx",
       "source": "./opsx",
-      "description": "Orchestrated OpenSpec apply — the main agent groups pending tasks by scope and dispatches a worker per group (parallel then serial by dependency), only managing OpenSpec state and reviews; it never writes implementation code itself. Ships /opsx:apply-subagent (Claude subagent worker) with its SOT skill."
+      "description": "Orchestrated OpenSpec apply — the main agent groups pending tasks by scope and dispatches a worker per group (parallel then serial by dependency), only managing OpenSpec state and reviews; it never writes implementation code itself. Ships /opsx:apply-subagent (Claude subagent worker) with its SOT skill. Requires the agency-agents catalog at ~/.agency-agents (install per the README); a role it cannot resolve there halts the run rather than standing in a fabricated expert."
     }
   ]
 }
