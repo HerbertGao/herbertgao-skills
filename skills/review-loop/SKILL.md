@@ -120,15 +120,17 @@ Dispatch all three slots **in parallel, in one message**. Each prompt is self-co
 | MCE | `Minimal Change Engineer` | `engineering/engineering-minimal-change-engineer.md` |
 | ASE | **`Security Engineer`** | `security/security-appsec-engineer.md` |
 
-*(ASE is the trap: the catalog file's frontmatter reads `Application Security Engineer`, which is registered nowhere and matches no filename. A lane that looks itself up under that string resolves at neither `registered` nor `local` — and the supply-chain advice below, "pre-clone so `local` hits first", is then vacuous for the one lane whose job is security.)*
+*(ASE is the trap: the catalog file's frontmatter reads `Application Security Engineer`, which is registered nowhere and matches no filename. A lane that looks itself up under that string finds no catalog file and halts — the one lane whose job is security, stopped by a name.)*
 
-| tier | resolve | notes |
+**Read the catalog before you resolve any lane.** The read is the only step of this ladder with a falsifiable artifact: a file either is at that path or it is not, and a tool record says which. "The host has this type registered" is a sentence, and a sentence costs nothing to write — put it first and the halt below is one an agent can talk its way past without ever touching the filesystem.
+
+| step | act | outcome |
 |---|---|---|
-| **registered** | the lane's **type-name** is an installed subagent type → dispatch directly. **The dispatch record is the evidence** — no registry to check the type-name against ⇒ the tier does not apply, resolve at `local` | strongest |
-| **local** | the lane's **catalog path** under `~/.agency-agents/` (a git clone of the catalog; nests two levels). Confirm the file's frontmatter `name:` equals the lane's type-name. Embed the body, minus frontmatter, as a generic subagent's persona. **The marker carries the path** — `[local: <catalog path>]` — so the tier is a claim a reader can falsify | full source, no network |
+| **1 — resolve** | read the lane's **catalog path** under `~/.agency-agents/` (a git clone of the catalog; nests two levels). Confirm the file's frontmatter `name:` equals the lane's type-name | no file ⇒ the lane is **unresolved** ⇒ halt, below |
+| **2 — dispatch** | the file is there, so the lane is real. Its type-name is an installed subagent type on this host ⇒ dispatch that subagent natively, marker `[registered]` — **strongest: the host owns the persona and its tool scope**. Otherwise embed the file's body, minus frontmatter, as a generic subagent's persona, marker `[local: <catalog path>]` | **each marker carries what falsifies it** — the path a reader can stat, or (⑮) the dispatch record that must name the type |
 
 
-**A lane that resolves at neither tier halts the run** — `PREREQUISITE-MISSING (<lane> — see README)`, a hand-back like `OUT-OF-SCOPE-PENDING`, not a verdict: the catalog is a prerequisite the user installs, and a run without a real reviewer has nothing to certify with.
+**An unresolved lane halts the run** — `PREREQUISITE-MISSING (<lane> — see README)`, a hand-back like `OUT-OF-SCOPE-PENDING`, not a verdict: the catalog is a prerequisite the user installs, and a run without a real reviewer has nothing to certify with.
 
 **Independent Reviewer standing prompt** — "You are an independent adversarial reviewer with no prior commitment to the design. Find what the author missed: self-contradiction, cross-file drift, forward fragility, ambiguity, scope creep, security. Report findings with severity and `file:line`. End with the findings list and one final verdict token."
 
@@ -373,7 +375,7 @@ Back to §1, three slots in parallel — the third slot may recover mid-run: a s
 
 | condition | token |
 |---|---|
-| a lane resolves at neither `registered` nor `local` | **`PREREQUISITE-MISSING (<lane> — see README)`** — a hand-back, not a verdict; the user installs the prerequisite (or declines) and the run resumes or ends there |
+| a lane has no catalog file at its path (**unresolved**, §1) | **`PREREQUISITE-MISSING (<lane> — see README)`** — a hand-back, not a verdict; the user installs the prerequisite (or declines) and the run resumes or ends there |
 | an unadjudicated out-of-scope blocker/major (§1d) | **`OUT-OF-SCOPE-PENDING (N left)`** — no token, no suffix; **outranks everything, including the cap**. Halt for the user; the harness stops auto-continuing. If the user never replies, the loop stays halted — **no timeout converts silence into consent.** No fence up ⇒ never triggers |
 | `Regression:` ≥1 for **two consecutive rounds** | **`NOT-CONVERGED (fix-induced blockers in 2 consecutive rounds; N items left, listed)`** — a terminal hand-back, **not a pass**. The loop is not iterating toward a pass; its fixes are producing the next round's findings. **It fires with or without a cap**, which is what closes the "delete the cap line to loop until pass" hole. *Two, not three*: a replay of a real six-round run showed a threshold of 3 fires exactly where the loop stopped by exhaustion anyway. And the asymmetry is not close — a false positive costs a hand-back the user overrides in one sentence; a false negative costs another N rounds of the loop certifying the defects it is inserting |
 | a tool record in this run wrote into `~/.agency-agents` | **`CAPPED (catalog self-installed)`** — terminal, not a pass: the personas came from a checkout the loop installed, not one the user chose. A catalog the *user* installs mid-run is theirs, and resolves as `local` from the next round |

@@ -224,11 +224,12 @@ openspec-cn validate "<name>" --strict     # 只校验规格 markdown
 
 **catalog 是用户装的前置条件（安装命令见本仓库根 README）；本 skill 及其派出的 subagent 只读它、不写它**——写实现代码的 subagent，来自用户自己 clone、自己控制版本的那份 checkout。缺了就降级并说明，本 skill 不替用户装。
 
-**两层解析（回显解析到的层级）：**
+**先读 catalog，再解析角色。** 这条梯子上只有「读文件」这一步有可证伪的凭据：文件要么在那个路径上，要么不在，工具记录说了算。而「宿主已注册这个类型」是一句话，一句话写下来不费任何力气——把它放在前面，下面那个停机就成了一个 agent 光靠说就能绕过、全程不碰文件系统的停机。
 
-1. **registered** —— 该角色已注册为宿主的原生 subagent（按其 frontmatter `name:`，如 `Frontend Developer`）→ 直接派发。**派发记录就是这一档的证据**——宿主没有可查的 subagent 注册表 ⇒ 这一档不适用，落到 local。**注意：catalog 文件的 frontmatter `name:` 是显示名（`Frontend Developer`），不是文件名 slug（`engineering-frontend-developer`）——按错的那个查，两层全都命中不了。**
-2. **local** —— 上表的源路径，在 `~/.agency-agents/`（一个 catalog 的 git clone，嵌套两层）下取；校验 frontmatter `name:` 等于该角色名；正文（跳过 frontmatter）作 persona 注入 `general-purpose`。**回显带上解析到的路径**——`<组>/<角色>：[local: <源路径>]`——让层级成为可被证伪的声明。
-**两层都解析不出 ⇒ 停机**：输出「缺前置：<角色> 未注册、且在 ~/.agency-agents 的 <源路径> 解析不出——安装见 README」，本轮不派该组、不造替身专家。装 catalog 是用户的事；一个两行 persona 的替身写出的实现，review 无从对照真专家的产出。
+1. **解析** —— 取上表的源路径，在 `~/.agency-agents/`（一个 catalog 的 git clone，嵌套两层）下读；校验 frontmatter `name:` 等于该角色名。**注意：catalog 文件的 frontmatter `name:` 是显示名（`Frontend Developer`），不是文件名 slug（`engineering-frontend-developer`）——按错的那个查，永远读不到。** 文件不在 ⇒ 该角色**解析不出**。
+2. **派发** —— 文件在，角色就是真的。它的 `name:` 恰好也是宿主已注册的 subagent 类型 ⇒ 直接派原生 subagent，回显 `[registered]`（**最强档：persona 与工具范围由宿主自己管**）；否则把正文（跳过 frontmatter）作 persona 注入 `general-purpose`，回显 `[local: <源路径>]`。**回显带上路径**——`<组>/<角色>：[local: <源路径>]`——让档位成为可被证伪的声明。
+
+**解析不出 ⇒ 停机**：输出「缺前置：<角色> 在 ~/.agency-agents 的 <源路径> 读不到——安装见 README」，本轮不派该组、不造替身专家。装 catalog 是用户的事；一个两行 persona 的替身写出的实现，review 无从对照真专家的产出。
 
 ## 输出模板
 
