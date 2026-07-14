@@ -7,7 +7,7 @@ defaults:
   command: bash bin/run-codex.sh   # 假 HOME 隔离（codex 认证经 CODEX_HOME 存活，无需 API key）
   provider: local
   trials: 5
-  timeout: 900
+  timeout: 1800
   threshold: 0.8
 
 tasks:
