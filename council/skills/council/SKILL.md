@@ -235,7 +235,7 @@ Take the **first matching row**:
 
 | state | action |
 |---|---|
-| A0 reports `blind: no` — a seat ran on a worker type that inherits context, dispatches, or writes | emit `UNRESOLVED (not-blind: N open)` directly |
+| A0 reports `blind: no` — a seat ran on a worker type that inherits context or can dispatch | emit `UNRESOLVED (not-blind: N open)` directly |
 | no session log obtainable, or the log does not contain the dispatch that produced the auditor | emit `UNRESOLVED (dispatch-unverifiable: N open)` directly (N may be 0) |
 | verdict FAIL on **A0 / A0b / A5** — a dispatch that never happened, one that happened and was hidden, a leaked prompt, fabricated concession evidence | **no re-audit.** These are evidence of fabrication, not quality defects; a retry budget that erases them erases the only checks that can see the protocol's core failure. Emit `UNRESOLVED (audit-failed: fabrication)` directly; §7 lists the failing checks |
 | verdict FAIL on any other check, fixable, re-audit budget unspent | fix the candidate, re-run §6, re-enter this table |
@@ -296,16 +296,25 @@ for line in open(LOG):
             i=b.get("input") or {}
             if b["name"]=="Agent":
                 p=i.get("prompt") or ""
-                m=re.search(r'dispatch:\s*(\d+)',p); kk=m.group(1) if m else "?"
+                hdr0=p.split("\n",1)[0]                  # the header is the FIRST LINE or it is not a header
+                m=re.fullmatch(r'council:.+\|\s*seat:.+\|\s*round:\s*\d+\s*\|\s*dispatch:\s*(\d+)\s*(\|.*)?', hdr0)
+                kk=m.group(1) if m else "NO-HEADER"      # a `re.search` over the whole prompt would find the
+                                                         # `dispatch: 7` sitting inside a quoted return and call
+                                                         # a headerless dispatch well-formed — A0's own parser
+                                                         # letting the hidden seat through the check that hunts it
                 disp[b["id"]]=(kk, i.get("subagent_type"), hashlib.sha256(p.encode()).hexdigest()[:16], p.split("\n")[0])
 tools(LOG,"moderator")
 for tid,(kk,st,dg,hdr) in disp.items():
     aid,mdl = res.get(tid,(None,None))
     print("\t".join(["DISPATCH",kk,tid,str(aid),str(st),str(mdl),dg,hdr]))
-    sc=f"{SIDE}/agent-{aid}.jsonl"
-    if aid and os.path.exists(sc): tools(sc,f"seat-k{kk}")             # <- the write-gate's ONLY enumeration path
+    hits=[p for p in glob.glob(f"{os.path.dirname(LOG)}/*/subagents/agent-{aid}.jsonl")] if aid else []
+    if not aid:   print(f"UNVERIFIABLE\tseat-k{kk}\tno-agentId")       # <- the write-gate's ONLY enumeration path
+    elif hits:    tools(hits[0],f"seat-k{kk}")                         #    (a resumed run's sidecar can sit under
+    else:         print(f"UNVERIFIABLE\tseat-k{kk}\tno-sidecar\t{aid}")#     an EARLIER session's dir — glob, don't guess)
 EOF
 ```
+
+**An `UNVERIFIABLE` row is not a clean row.** Skip a missing sidecar silently and "this worker made no tool calls" becomes indistinguishable from "this worker's record was not found" — A9 would clear a seat it never opened, which is the whole defect this sweep exists to close. Any `UNVERIFIABLE` row ⇒ A9 cannot clear that worker ⇒ **FAIL**, and A3/A5 lose that seat's canonical return ⇒ `UNRESOLVED (unaudited)` per §5, never a pass.
 
 `agentId` and `resolvedModel` live on the *result* record, joined by `tool_use_id` — a sweep that reads only the `tool_use` blocks recovers neither, and `toolUseResult` is sometimes a bare string (an error), so guard the index or the sweep aborts mid-file and silently truncates.
 
@@ -331,8 +340,10 @@ A0  Every dispatch in the window, against the platform's own records. **A dispat
       failure; a `re-dispatch` names the superseded `k`. The header was written BEFORE the return existed, so
       it cannot be a post-hoc reclassification — that is the whole reason it, and not a file, is the ledger.
       `subagent_type`: every seat ran on `Explore` — not `fork` (inherits context), not `general-purpose`
-      (it can dispatch and write, so a seat could proxy every rule A9 enforces against you) ⇒ else
-      `blind: no`. Read it from the log.
+      (it has `Agent`, so a seat could fan out and the dispatch count would stop being the run) ⇒ else
+      `blind: no`. Read it from the log. **`Explore` has `Bash` and this check does not care**: a seat that
+      writes is still blind, and its writes are A9's business. Fail them here and every shell-backed seat —
+      i.e. every seat this platform can give you — is `blind: no` before A9 ever opens its sidecar.
       Report, non-gating: `pre-run <dispatches>/<nonce-rolls>` — dispatch records BEFORE the birth event, and
       `openssl rand -hex 4` calls in the log. A council is self-driving and owns its session; a pre-polled
       council shows up here, and the reader is entitled to the number. **A pre-birth dispatch whose prompt

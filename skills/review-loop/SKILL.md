@@ -40,7 +40,7 @@ The main agent dispatches the reviewers, grades their findings, writes the fixes
 
 **Tier 1 — mechanical output: a proof.** A command's output, a diff, a re-run. The main agent cannot produce it without running the command, and anyone can re-run it. `Landed:` and the anchors' `command + output` are here.
 
-**Tier 2 — a pasted subagent return: a cost barrier, not a proof.** The main agent *could* fabricate one — but fabricating a five-thousand-word adversarial review *is doing the review*. That is the whole value: paraphrase is cheap and is laundering; verbatim is not. **A lane whose return was not pasted is `not-run`.**
+**Tier 2 — a pasted subagent return: a cost barrier, not a proof.** The main agent *could* fabricate one — but fabricating a five-thousand-word adversarial review *is doing the review*. That is the whole value: paraphrase is cheap and is laundering; verbatim is not. **Verbatim means the raw return, in its original language, unedited** — a translation, a tidy-up or a splice of two non-adjacent fragments is a NEW artifact, and pasting one under a "verbatim" label is fabrication, not formatting. Translate beside it if the reader needs it (`原文: … ／ 译: …`), never instead of it: the moment a quote is something you typed, the cost barrier is gone and the tier collapses to 3. **A lane whose return was not pasted is `not-run`.**
 
 **Tier 3 — a status line: a disclosure.** A number the graded party typed. It is not a check. Predicates ②–⑤, ⑦, ⑧, ⑩, ⑬ and ⑭ read only this, and are marked `[disclosure]` where they appear — they exist so an omission is visible, not so a lie is impossible.
 
@@ -145,7 +145,7 @@ Slots: Code Reviewer=APPROVE [registered] | Reality Checker(§1b)=CHANGES-REQUES
 Augment: none
 Scope fence: agreed scope anchored | out-of-scope findings: 0
 Anchors: ①strong(invariant cmd#1) ⑤strong(grep cmd#2) ④weak
-Simplicity: net -12 this round, -140 cumulative | over-eng: 1 open
+Simplicity: net +18 this round (measured, from Landed:) | would-remove: -140 cumulative | over-eng: 1 open
 Legibility: unfollowable 0 | undefined 2 | restated 1
 Spot-audit: row 14 | re-ran empty-input | observed exit 1 vs claim exit 0
 Landed: src/auth.py:91-152, src/cli.py:12-19
@@ -271,11 +271,13 @@ The three slots are all **additive** and the fixer is only locally minimal — n
 
 **Run** on every round whose diff contains **code or prose** — the ratchet argument holds verbatim with "clauses" for "lines". **On the loop's first round, run it over the whole artifact, not just the diff**, and **carry `net:` forward cumulatively**: a per-round diff lens sees one individually-justified insertion at a time, and the accrued total is invisible to it by construction — which is exactly how a loop adds 60% to a document while every round's addition looks necessary. Neither code nor prose → the skip string. Dispatch as a generic subagent carrying the rubric, in parallel with §1.
 
-**Rubric** (self-contained). One line per finding: `file:line: <tag> <what>. <replacement>.` — tags `delete:` · `stdlib:` (hand-rolled what the stdlib ships) · `native:` (the platform already does it) · `yagni:` · `shrink:`. On prose only three apply: `delete:` (a rule nobody will follow; a section restating another) · `yagni:` (a branch that can never fire) · `shrink:` (same rule, fewer words). End with `net: -N this round, -M cumulative` or `Lean already. Ship.` The ladder: stdlib > native > installed-dep > one line > minimum code.
+**Rubric** (self-contained). One line per finding: `file:line: <tag> <what>. <replacement>.` — tags `delete:` · `stdlib:` (hand-rolled what the stdlib ships) · `native:` (the platform already does it) · `yagni:` · `shrink:`. On prose only three apply: `delete:` (a rule nobody will follow; a section restating another) · `yagni:` (a branch that can never fire) · `shrink:` (same rule, fewer words). End with `would-remove: -N this round, -M cumulative` or `Lean already. Ship.` The ladder: stdlib > native > installed-dep > one line > minimum code.
 
 **Never flag the never-simplify set**: validation at trust boundaries · error handling that prevents data loss · security · accessibility · **anything the *user* explicitly requested** — *not* "anything a prior round's triage requested", which would exempt the loop's own output from the lens built to counter it · a hardware calibration knob · the one runnable check.
 
-**Report-only.** Findings ride §2 as `minor` advisory, never auto-dispatched to the fixer — a prose pass can't prove a line dead ("no caller" by grep ≠ unreachable), and auto-acting on the label is the mislabel → delete → re-add hazard. Promotable to `major` only when the bloat itself breaks correctness or a contract; never `blocker`. `net:` counts what §1e's own findings would remove.
+**Report-only.** Findings ride §2 as `minor` advisory, never auto-dispatched to the fixer — a prose pass can't prove a line dead ("no caller" by grep ≠ unreachable), and auto-acting on the label is the mislabel → delete → re-add hazard. Promotable to `major` only when the bloat itself breaks correctness or a contract; never `blocker`. `would-remove:` counts what §1e's own findings *would* remove — a proposal, and tier 3.
+
+**`net:` is a different number, and the gate reads that one: the round's MEASURED delta, recomputed from `Landed:`.** They are easy to conflate and the conflation is fatal: §1e can honestly report `would-remove: -500` in a round that actually *added* 400 words, so a gate reading §1e's number would never fire on the growth it exists to catch.
 
 ### 1f. Legibility counter-pressure (cold-read lens — findings-only, no slot; **the gate on prose**)
 
@@ -440,7 +442,7 @@ Continue if any holds:
 - **⑨** the `Augment:` line is missing; or a round declared `expert unavailable` **without pasting the grep command and its candidate count**; or the terminal token lacks the corresponding suffix;
 - **⑩** the `Scope fence:` line is missing (the skip string satisfies it, and adds its suffix); or the round has an unadjudicated out-of-scope blocker/major yet a token was written;
 - **⑪** the `Legibility:` line is missing on a prose round (skip string and `clean` both satisfy it); or it reports `unfollowable ≥ 1` and the terminating round contains no corresponding fix, or a demotion that does not quote the reader's Q5 text;
-- **⑫** the `Landed:` or `Regression:` line is missing (the `n/a` strings satisfy them on a fix-less round); **or the `Regression:` count disagrees with the intersection you recompute yourself** — `{the pasted triage list's blockers/majors}` ∩ `{the previous round's `Landed:`}`; **read the two artifacts, do not read the number** — or two consecutive rounds carry ≥1 fix-induced blocker and the terminating round is not `NOT-CONVERGED`;
+- **⑫** the `Landed:` or `Regression:` line is missing (the `n/a` strings satisfy them on a fix-less round); **or the `Regression:` count disagrees with the intersection you recompute yourself** — `{the pasted triage list's blockers/majors}` ∩ `{the previous round's Landed:}`; **read the two artifacts, do not read the number** — or two consecutive rounds carry ≥1 fix-induced blocker and the terminating round is not `NOT-CONVERGED`;
 - **⑬** any §1b row is `verified-safe` and the round carries no `Spot-audit:` line naming a row, an input re-run, and an observed-vs-claim;
 - **⑭** the `Simplicity:` line is missing on a code-or-prose round (the skip string and `lean` satisfy it) — without this it is the one echoed field no predicate reads, so an agent that never runs §1e passes every check; **or its `net:` disagrees with the delta you recompute from `Landed:`** — read the artifact, not the number — **or `net:` > 0 for two consecutive rounds and the terminating round carries no `bloat:` degrade reason.**
 

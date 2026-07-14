@@ -231,7 +231,7 @@ Take the **first matching row**:
 
 | state | action |
 |---|---|
-| A0 reports `blind: no` — a seat ran on a worker type that inherits context, dispatches, or writes | emit `UNRESOLVED (not-blind: N open)` directly |
+| A0 reports `blind: no` — a seat ran on a worker type that inherits context or can dispatch | emit `UNRESOLVED (not-blind: N open)` directly |
 | no session log obtainable, or the log does not contain the dispatch that produced the auditor | emit `UNRESOLVED (dispatch-unverifiable: N open)` directly (N may be 0) |
 | verdict FAIL on **A0 / A0b / A5** — a dispatch that never happened, one that happened and was hidden, a leaked prompt, fabricated concession evidence | **no re-audit.** These are evidence of fabrication, not quality defects; a retry budget that erases them erases the only checks that can see the protocol's core failure. Emit `UNRESOLVED (audit-failed: fabrication)` directly; §7 lists the failing checks |
 | verdict FAIL on any other check, fixable, re-audit budget unspent | fix the candidate, re-run §6, re-enter this table |
@@ -278,7 +278,9 @@ A0  Every dispatch in the window, against the platform's own records. **A dispat
       Every `kind` in a header matches what that dispatch actually was: a `retry` record shows a platform
       failure; a `re-dispatch` names the superseded `k`. The header was written BEFORE the return existed, so
       it cannot be a post-hoc reclassification — that is the whole reason it, and not a file, is the ledger.
-      Worker type: no seat ran on a type that inherits context, dispatches, or writes ⇒ else `blind: no`.
+      Worker type: no seat ran on a type that inherits context or can dispatch ⇒ else `blind: no`.
+      **A shell is not a dispatch.** A seat that CAN write is still blind — writes are A9's business, not this one;
+      failing them here marks every normal shell-backed seat non-blind before A9 ever runs.
       Report, non-gating: `pre-run <dispatches>/<nonce-rolls>` — dispatch records BEFORE the birth event, and
       `openssl rand -hex 4` calls in the log. A council is self-driving and owns its session; a pre-polled
       council shows up here, and the reader is entitled to the number. **A pre-birth dispatch whose prompt
