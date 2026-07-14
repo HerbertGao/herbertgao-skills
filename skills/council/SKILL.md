@@ -278,9 +278,11 @@ A0  Every dispatch in the window, against the platform's own records. **A dispat
       Every `kind` in a header matches what that dispatch actually was: a `retry` record shows a platform
       failure; a `re-dispatch` names the superseded `k`. The header was written BEFORE the return existed, so
       it cannot be a post-hoc reclassification — that is the whole reason it, and not a file, is the ledger.
-      Worker type: no seat ran on a type that inherits context or can dispatch ⇒ else `blind: no`.
-      **A shell is not a dispatch.** A seat that CAN write is still blind — writes are A9's business, not this one;
-      failing them here marks every normal shell-backed seat non-blind before A9 ever runs.
+      Worker type, read from the log, **both branches spelled out**: every seat ran on a type that neither
+      inherits your context nor can dispatch ⇒ `blind: yes`. Any seat on a type that inherits context, or
+      that can dispatch ⇒ `blind: no`.
+      **A shell is not a dispatch.** A seat that CAN write is still `blind: yes` — writes are A9's business,
+      not this one; failing them here marks every normal shell-backed seat non-blind before A9 ever runs.
       Report, non-gating: `pre-run <dispatches>/<nonce-rolls>` — dispatch records BEFORE the birth event, and
       `openssl rand -hex 4` calls in the log. A council is self-driving and owns its session; a pre-polled
       council shows up here, and the reader is entitled to the number. **A pre-birth dispatch whose prompt

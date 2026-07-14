@@ -339,11 +339,12 @@ A0  Every dispatch in the window, against the platform's own records. **A dispat
       Every `kind` in a header matches what that dispatch actually was: a `retry` record shows a platform
       failure; a `re-dispatch` names the superseded `k`. The header was written BEFORE the return existed, so
       it cannot be a post-hoc reclassification — that is the whole reason it, and not a file, is the ledger.
-      `subagent_type`: every seat ran on `Explore` — not `fork` (inherits context), not `general-purpose`
-      (it has `Agent`, so a seat could fan out and the dispatch count would stop being the run) ⇒ else
-      `blind: no`. Read it from the log. **`Explore` has `Bash` and this check does not care**: a seat that
-      writes is still blind, and its writes are A9's business. Fail them here and every shell-backed seat —
-      i.e. every seat this platform can give you — is `blind: no` before A9 ever opens its sidecar.
+      `subagent_type`, read from the log, **both branches spelled out**: every seat ran on `Explore` ⇒
+      `blind: yes`. Any seat on `fork` (inherits your context) or `general-purpose` (it has `Agent`, so a seat
+      could fan out and the dispatch count would stop being the run) ⇒ `blind: no`.
+      **`Explore` has `Bash` and this check does not care**: a seat that writes is still `blind: yes`, and its
+      writes are A9's business. Fail them here and every shell-backed seat — i.e. every seat this platform can
+      give you — is `blind: no` before A9 ever opens its sidecar.
       Report, non-gating: `pre-run <dispatches>/<nonce-rolls>` — dispatch records BEFORE the birth event, and
       `openssl rand -hex 4` calls in the log. A council is self-driving and owns its session; a pre-polled
       council shows up here, and the reader is entitled to the number. **A pre-birth dispatch whose prompt
