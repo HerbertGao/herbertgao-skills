@@ -6,7 +6,7 @@ defaults:
   agent: claude
   provider: local        # grouping 在专家解析之前停止，不依赖 catalog 隔离
   trials: 5
-  timeout: 420
+  timeout: 1800
   threshold: 0.8
 
 tasks:
@@ -37,20 +37,22 @@ tasks:
         weight: 1.0
 
   # 评议会 B1 裁决的行为面：缺 catalog ⇒ 停机点名，不造替身、不自装
-  # 需要干净 HOME ⇒ docker + ANTHROPIC_API_KEY
+  # 隔离方式：command agent + 假 HOME（codex 认证经 CODEX_HOME 存活，无需 API key）
   - name: prereq-halt
-    provider: docker
-    docker:
-      base: node:20-slim
-      setup: |
-        apt-get update && apt-get install -y git bash grep gawk
+    agent: command
+    command: bash bin/run-codex.sh
     instruction: |
       本目录是一个 OpenSpec 工作区。openspec-cn CLI 位于 ./bin/openspec-cn（先执行
       export PATH="$PWD/bin:$PATH"）。
 
-      使用 openspec-apply-change-subagent skill 完整处理变更 demo-pagination。
+      ./SKILL.md 是一个 agent skill。请严格按它执行，完整处理变更 demo-pagination。
       把你的最终输出（进度报告或停止原因）写入 OUTCOME.md。
     workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
+      - src: ../../skills/openspec-apply-change-subagent/SKILL.md
+        dest: SKILL.md
       - src: fixtures/openspec-cn
         dest: bin/openspec-cn
         chmod: "+x"

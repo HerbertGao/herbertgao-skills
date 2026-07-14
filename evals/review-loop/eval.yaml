@@ -3,23 +3,25 @@ version: "1"
 skill: ../../skills/review-loop
 
 defaults:
-  agent: claude
-  provider: docker       # 缺前置停机需要干净 HOME（无 ~/.agency-agents、无注册 reviewer）
+  agent: command
+  command: bash bin/run-codex.sh   # 假 HOME 隔离（codex 认证经 CODEX_HOME 存活，无需 API key）
+  provider: local
   trials: 5
-  timeout: 420
+  timeout: 1800
   threshold: 0.8
-  docker:
-    base: node:20-slim
-    setup: |
-      apt-get update && apt-get install -y git bash grep gawk
 
 tasks:
   # 评议会 B1 裁决的行为面：解析梯两层皆空 ⇒ PREREQUISITE-MISSING，不伪造 verdict、不自装 catalog
   - name: prereq-halt
     instruction: |
-      使用 review-loop skill 审查本目录的 change.diff（作用于 app.py 的改动）。
-      把最终的终态输出（terminal token 与理由）写入 OUTCOME.md。
+      ./SKILL.md 是一个 agent skill。请严格按它执行，审查本目录的 change.diff
+      （作用于 app.py 的改动）。把最终的终态输出（terminal token 与理由）写入 OUTCOME.md。
     workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
       - src: fixtures/app.py
         dest: app.py
       - src: fixtures/change.diff
