@@ -103,9 +103,9 @@ Dispatch all three slots **in parallel, in one message**. Each prompt is self-co
 
 **The catalog is a prerequisite the user installs (per the README); the loop reads it and never writes to it — and neither does anything it dispatches**: a reviewer that stamps `APPROVE` on code comes from a checkout the user chose to trust, at a revision they control. Missing ⇒ the lane degrades and says so; the loop never installs it.
 
-**Two identifiers, named apart, because conflating them silently drops a lane through every tier:** the **type-name** is what a platform registers (`Code Reviewer`); the **catalog path** is where the file lives (`engineering/engineering-code-reviewer.md`). The catalog's frontmatter `name:` is the *type-name*, not the filename slug.
+**Two identifiers, named apart, because conflating them silently drops a lane through every tier:** the **type-name** is the string a platform would register a lane under (`Code Reviewer`); the **catalog path** is where the file lives (`engineering/engineering-code-reviewer.md`). The catalog's frontmatter `name:` is the *type-name*, not the filename slug. **The table below is a lookup key, not a registry** — it says which string to search the host's subagent list for; it never says the host has it.
 
-| lane | type-name (registered tier) | catalog path (local tier) |
+| lane | type-name (the string to look up) | catalog path (local tier) |
 |---|---|---|
 | CR | `Code Reviewer` | `engineering/engineering-code-reviewer.md` |
 | RC | `Reality Checker` | `testing/testing-reality-checker.md` |

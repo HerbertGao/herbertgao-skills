@@ -162,6 +162,42 @@ def check_twins(files: dict) -> list:
     return fails
 
 
+HOST_KEY = "subagent_type"   # the host's dispatch key: the one thing the neutral file never names
+
+
+def check_claude_copies(files: dict) -> list:
+    """The hand-maintained Claude copy must stay a Claude copy.
+
+    `skills/<n>/` is platform-neutral; `<plugin>/skills/<n>/` is its Claude-specific
+    sibling, written by hand and NOT a mirror. Nothing guarded that, so one blanket
+    `cp skills/<n>/SKILL.md <plugin>/skills/<n>/SKILL.md` flattens the Claude copy
+    into the neutral text — every `subagent_type`, `general-purpose`, `isolation:`
+    silently gone — and the validator still says OK. (It happened, on 2026-07-14.)
+
+    The predecessor of this check was a semantic parity diff whose allowed-divergence
+    list was generated FROM the current diff: an answer key, green by construction.
+    So these three assertions read the files, not a snapshot of them:
+      1. the Claude copy is not a byte-copy of the neutral one — it exists because it differs;
+      2. it names the host's dispatch key — a flatten removes it;
+      3. the neutral one does not — the reverse flatten, and the whole point of it being neutral.
+    """
+    fails = []
+    for src in sorted(f for f in files if re.fullmatch(r"skills/[^/]+/SKILL\.md", f)):
+        name = src.split("/")[1]
+        copies = [f for f in files
+                  if re.fullmatch(rf"(?!codex-plugins)[^/]+/skills/{re.escape(name)}/SKILL\.md", f)]
+        if not copies:
+            fails.append(f"{src} has no Claude copy at <plugin>/skills/{name}/SKILL.md")
+        if HOST_KEY in files[src]:
+            fails.append(f"{src} names {HOST_KEY!r} — the neutral spec must not carry a host's dispatch key")
+        for c in copies:
+            if files[c] == files[src]:
+                fails.append(f"{c} is a byte-copy of {src} — the Claude copy was flattened onto the neutral one")
+            elif HOST_KEY not in files[c]:
+                fails.append(f"{c} never names {HOST_KEY!r} — it is not dispatching on Claude Code")
+    return fails
+
+
 def load_markdown() -> dict:
     files = {}
     exts = (".md", ".yaml", ".yml", ".json")   # the entry shells ship too; residue in one ships with it
@@ -266,6 +302,7 @@ def main() -> int:
                 if m not in allowed:
                     fails.append(f"{rel}: {m!r} is not a defined form (allowed: {sorted(allowed)})")
     fails += check_twins(files)
+    fails += check_claude_copies(files)
     fails += check(contract, files, tracked)
 
     for n in notes:
@@ -338,6 +375,21 @@ def self_test() -> int:
     ]
     for label, fs, expect in twin_cases:
         got = 1 if check_twins(fs) else 0
+        if got != expect:
+            ok = False
+        print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
+
+    N, C = "skills/s/SKILL.md", "p/skills/s/SKILL.md"
+    copy_cases = [
+        ("claude copy differs and dispatches", {N: "neutral", C: "claude subagent_type: x"}, 0),
+        ("claude copy flattened onto neutral", {N: "neutral", C: "neutral"}, 1),
+        ("claude copy lost its dispatch key", {N: "neutral", C: "claude, no key"}, 1),
+        ("neutral spec grew a host key", {N: "neutral subagent_type: x", C: "claude subagent_type: x"}, 1),
+        ("claude copy missing entirely", {N: "neutral"}, 1),
+        ("codex twin is not a claude copy", {N: "neutral", "codex-plugins/p/skills/s/SKILL.md": "neutral"}, 1),
+    ]
+    for label, fs, expect in copy_cases:
+        got = 1 if check_claude_copies(fs) else 0
         if got != expect:
             ok = False
         print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")

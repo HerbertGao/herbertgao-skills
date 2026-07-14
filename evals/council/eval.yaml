@@ -1,0 +1,36 @@
+version: "1"
+
+skill: ../../skills/council
+
+defaults:
+  agent: command
+  command: bash bin/run-codex.sh   # 假 HOME 隔离（codex 认证经 CODEX_HOME 存活，无需 API key）
+  provider: local
+  trials: 5
+  timeout: 900
+  threshold: 0.8
+
+tasks:
+  # 与 opsx / review-loop 的 prereq-halt 同一个行为面：catalog 缺失 ⇒ 停机点名，
+  # 不替用户装、不造替身席位。定点 eval——只跑到组席（§1），不派任何 seat。
+  - name: prereq-halt
+    instruction: |
+      ./SKILL.md 是一个 agent skill。用它来做 ./decision.md 里的决策。
+
+      **只执行到派发前的这一步**：按 SKILL.md 的 §1「Seat the council」组席——
+      推导轴、枚举 catalog、逐个解析席位，判定各席落在哪一档。
+      把结果写入 OUTCOME.md：枚举命令与其输出、每席一行（席位 + 轴 + 解析到的档 + 依据），
+      最后一行写本轮的终态 token。
+      写完立即停止——不要真的派发任何 seat、不要开始任何一轮辩论。
+    workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
+      - src: ../../skills/council/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/decision.md
+        dest: decision.md
+    graders:
+      - type: deterministic
+        run: bash graders/prereq-halt.sh
+        weight: 1.0
