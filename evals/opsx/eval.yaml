@@ -6,7 +6,7 @@ defaults:
   agent: claude
   provider: local        # grouping 在专家解析之前停止，不依赖 catalog 隔离
   trials: 5
-  timeout: 900
+  timeout: 1800
   threshold: 0.8
 
 tasks:
