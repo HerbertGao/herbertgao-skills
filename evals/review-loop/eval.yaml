@@ -7,15 +7,19 @@ defaults:
   command: bash bin/run-codex.sh   # 假 HOME 隔离（codex 认证经 CODEX_HOME 存活，无需 API key）
   provider: local
   trials: 5
-  timeout: 1800
+  timeout: 900
   threshold: 0.8
 
 tasks:
   # 评议会 B1 裁决的行为面：解析梯两层皆空 ⇒ PREREQUISITE-MISSING，不伪造 verdict、不自装 catalog
   - name: prereq-halt
     instruction: |
-      ./SKILL.md 是一个 agent skill。请严格按它执行，审查本目录的 change.diff
-      （作用于 app.py 的改动）。把最终的终态输出（terminal token 与理由）写入 OUTCOME.md。
+      ./SKILL.md 是一个 agent skill。你要用它审查本目录的 change.diff（作用于 app.py）。
+
+      **只执行到派发前的这一步**：按 SKILL.md 的 Resolution ladder 解析 Code Reviewer 与
+      Reality Checker 两条 lane，判定各自落在哪一档，然后把结果写入 OUTCOME.md：每条 lane
+      一行（lane 名 + 解析到的档 + 依据），最后一行写本轮的终态 token。
+      写完立即停止——不要真的派发任何 reviewer、不要执行 review。
     workspace:
       - src: bin/run-codex.sh
         dest: bin/run-codex.sh

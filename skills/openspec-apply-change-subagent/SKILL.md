@@ -226,7 +226,7 @@ openspec-cn validate "<name>" --strict     # 只校验规格 markdown
 
 **两层解析（回显解析到的层级）：**
 
-1. **registered** —— 该角色已注册为宿主的原生 subagent（按其 frontmatter `name:`，如 `Frontend Developer`）→ 直接派发。**注意：catalog 文件的 frontmatter `name:` 是显示名（`Frontend Developer`），不是文件名 slug（`engineering-frontend-developer`）——按错的那个查，两层全都命中不了。**
+1. **registered** —— 该角色已注册为宿主的原生 subagent（按其 frontmatter `name:`，如 `Frontend Developer`）→ 直接派发。**派发记录就是这一档的证据**——宿主没有可查的 subagent 注册表 ⇒ 这一档不适用，落到 local。**注意：catalog 文件的 frontmatter `name:` 是显示名（`Frontend Developer`），不是文件名 slug（`engineering-frontend-developer`）——按错的那个查，两层全都命中不了。**
 2. **local** —— 上表的源路径，在 `~/.agency-agents/`（一个 catalog 的 git clone，嵌套两层）下取；校验 frontmatter `name:` 等于该角色名；正文（跳过 frontmatter）作 persona 注入 generic subagent。**回显带上解析到的路径**——`<组>/<角色>：[local: <源路径>]`——让层级成为可被证伪的声明。
 **两层都解析不出 ⇒ 停机**：输出「缺前置：<角色> 未注册、且在 ~/.agency-agents 的 <源路径> 解析不出——安装见 README」，本轮不派该组、不造替身专家。装 catalog 是用户的事；一个两行 persona 的替身写出的实现，review 无从对照真专家的产出。
 

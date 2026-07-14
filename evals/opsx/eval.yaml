@@ -6,7 +6,7 @@ defaults:
   agent: claude
   provider: local        # grouping 在专家解析之前停止，不依赖 catalog 隔离
   trials: 5
-  timeout: 1800
+  timeout: 900
   threshold: 0.8
 
 tasks:
@@ -45,8 +45,12 @@ tasks:
       本目录是一个 OpenSpec 工作区。openspec-cn CLI 位于 ./bin/openspec-cn（先执行
       export PATH="$PWD/bin:$PATH"）。
 
-      ./SKILL.md 是一个 agent skill。请严格按它执行，完整处理变更 demo-pagination。
-      把你的最终输出（进度报告或停止原因）写入 OUTCOME.md。
+      ./SKILL.md 是一个 agent skill。你要用它处理变更 demo-pagination。
+
+      **只执行到派发前的这一步**：分组，并按 SKILL.md 的「实现专家与解析梯」为每组解析一位
+      实现专家，判定各自落在哪一档，然后把结果写入 OUTCOME.md：每组一行（组名 + 角色 +
+      解析到的档 + 依据），最后写本轮结论。
+      写完立即停止——不要真的派发任何 subagent、不要改任何代码或复选框。
     workspace:
       - src: bin/run-codex.sh
         dest: bin/run-codex.sh

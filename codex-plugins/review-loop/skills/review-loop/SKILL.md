@@ -124,7 +124,7 @@ Dispatch all three slots **in parallel, in one message**. Each prompt is self-co
 
 | tier | resolve | notes |
 |---|---|---|
-| **registered** | the lane's **type-name** is an installed subagent type → dispatch directly | strongest |
+| **registered** | the lane's **type-name** is an installed subagent type → dispatch directly. **The dispatch record is the evidence** — no registry to check the type-name against ⇒ the tier does not apply, resolve at `local` | strongest |
 | **local** | the lane's **catalog path** under `~/.agency-agents/` (a git clone of the catalog; nests two levels). Confirm the file's frontmatter `name:` equals the lane's type-name. Embed the body, minus frontmatter, as a generic subagent's persona. **The marker carries the path** — `[local: <catalog path>]` — so the tier is a claim a reader can falsify | full source, no network |
 
 
