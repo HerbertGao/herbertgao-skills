@@ -174,10 +174,7 @@
       "regex": "APPROVE-DEGRADED \\([^)]*\\)",
       "allowed": [
         "APPROVE-DEGRADED (<all reasons, one parenthesis>)",
-        "APPROVE-DEGRADED (bloat: +N over 2 rounds, no lane removed anything)",
-        "APPROVE-DEGRADED (pure-proposal: prose-only)",
-        "APPROVE-DEGRADED (weak-reconciliation: incomplete)",
-        "APPROVE-DEGRADED (weak-reconciliation: incomplete; third-slot: not-run)"
+        "APPROVE-DEGRADED (bloat: +N over 2 rounds, no lane removed anything)"
       ]
     },
     {
