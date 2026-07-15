@@ -23,7 +23,7 @@ One decision with nothing written yet → one real specialist per named gap (4+)
 Each term's rules live in its section. This list is glosses and pointers.
 
 - **crux** — the specific proposition two seats **diverge** on ("will write QPS exceed 2k?", not "A picks Postgres"), numbered `C1..Cn`.
-- **named gap** — one sentence naming the constraint this seat will raise that no other seat structurally can. Test by **transposition**: move the sentence to another seat's name; if it still holds, it is not a gap.
+- **named gap** — one sentence naming the constraint this seat will raise that no other seat structurally can. Test by **transposition** — a naming judgment, not a checked gate: move the sentence to another seat's name; if it still fits there, it named no gap.
 - **blind** — a seat runs in a fresh context holding only the proposition, the truth sources and its own persona. A fresh `Agent` dispatch gives this **by mechanism** — but only while you use it: **a `fork` inherits your context, and `SendMessage` continues an already-running worker; neither is ever a seat.** A fork leaves a record that *looks* blind; a `SendMessage` leaves no dispatch record at all and A0 reads it as a dispatch that never happened. **`blind <yes|no>` is a checked field, never an assumed one** — A0 reads the `subagent_type` from the log.
 - **DA** — the opposing seat's attack round (devil's advocate), §3. **DA-final** — its second stage, §3.
 - **run nonce** — the 8 hex characters `openssl rand -hex 4` prints in §0. The platform records that call *and its output*, so the run has a birth event the moderator did not author.
@@ -78,7 +78,7 @@ proposition: <one refutable sentence>
 truth sources: <the paths/docs every seat gets in round 1>
 ```
 
-The proposition goes **verbatim** to every seat; the dispatch prompt carries no evaluative wording, no lean of yours, and no role hint like "you are the opposing seat" — opposition is the persona's job, and A0b greps the log for the leak. A proposition that cannot be compressed into one refutable sentence without hiding a second decision inside it ⇒ `STOPPED (proposition needs splitting)`.
+The proposition goes **verbatim** to every seat; the dispatch prompt carries no other seat's position, no seat's catalog path, and no role hint like "you are the opposing seat" — opposition is the persona's job, and **A0b greps the log for exactly those**. (A "lean" below that — bias in your own phrasing — has no mechanical test; it sits on the disclosed floor, not a gate.) A proposition you cannot compress into one refutable sentence is hiding a second decision — the operational test is the STOPPED table below: if you can list it as ≥2 decisions each with its own axes, it is several ⇒ `STOPPED (proposition needs splitting)`.
 
 **Every `STOPPED` owes evidence** — otherwise quitting before you start is the only free door. **A `STOPPED` emitted after any dispatch also owes A0** (a full run relabelled as an early exit is the cheapest cheat, and it is the one exit that would otherwise skip the audit): dispatch the auditor with the nonce + the A0 block only. **An A0 FAIL there ⇒ `UNRESOLVED (audit-failed: fabrication)` instead of the STOPPED token.**
 
@@ -113,13 +113,13 @@ find ~/.agency-agents -mindepth 2 -type f -name '*.md' \
 
 The exclusions are anchored to exact filenames, not prefixes — a prefix glob would delete the whole `security-*` division. `-mindepth 2` is where the catalog keeps its agents — a bare root-level `.md` is not part of the checkout the user installed; the `2>/dev/null` turns a missing directory into the empty listing the STOPPED table reads. Paste the output.
 
-Pick candidates per axis; read each frontmatter to confirm it *is* that axis. **Every seat, the DA and every cross-exam dispatch goes to `subagent_type: Explore`** — it has **no `Agent`**, so the run's topology is the star A0 audits and a seat cannot fan out. It does have `Bash`: **a seat can still write**, and nothing prevents it. A9's sidecar sweep is what catches it — that sweep is load-bearing, not belt-and-braces. `general-purpose` is for the auditor alone (it needs `Bash` too, and it needs `Agent` for nothing). Echo the seats; **the format is fixed** (the auditor parses it):
+Pick candidates per axis; read each frontmatter and judge whether it fits that axis — a selection judgment, not a mechanical gate (A2 later checks the path and the persona bytes, never the axis-fit). **Every seat, the DA and every cross-exam dispatch goes to `subagent_type: Explore`** — it has **no `Agent`**, so the run's topology is the star A0 audits and a seat cannot fan out. It does have `Bash`: **a seat can still write**, and nothing prevents it. A9's sidecar sweep is what catches it — that sweep is load-bearing, not belt-and-braces. `general-purpose` is for the auditor alone (it needs `Bash` too, and it needs `Agent` for nothing). Echo the seats; **the format is fixed** (the auditor parses it):
 
 ```text
 axis 1: considered <path-a>, <path-b> -> seated <path-a> (<one clause: why the other lost>)
   A. <absolute path>              # its body, minus frontmatter, IS the persona
   B. <absolute path>
-  D. synthesized                  # genuinely absent -> you author the persona, inline in the prompt
+  D. synthesized                  # no catalog file fits this axis (paste the candidates read + why each fails) -> you author the persona inline
 opposing: <seat letter>
 ```
 
@@ -145,7 +145,7 @@ council: <proposition> | run: <nonce> | seat: <path | —> | round: <n> | kind: 
 
 **The header is the whole ledger, and that is the point**: the platform records it verbatim, **at dispatch time, before the return exists** — so you cannot reclassify a dissenting seat as a `retry` after reading it. There is no ledger file to keep, and nothing for you to author that the audit then trusts.
 
-**Keep no copy of any return.** Read it, work from it, quote it into the record — but the platform's copy is the one every check reads, and a copy you hold is a copy you can rewrite.
+**Work from the return; the platform's copy is authoritative.** Read it, quote it verbatim into the record — but never treat your own transcript as the source of truth. Every check reads the platform's canonical copy, so a quote that diverges from it is caught. You hold the return to work from; what you do not get is to rewrite what the audit reads.
 
 Round 1: dispatch every seat in one message.
 
@@ -217,7 +217,7 @@ On C<n>: <rebut | concede | partially concede>
 
 **Re-seating**: a crux on a domain nobody owns ⇒ seat a tie-breaker on a **new axis**, **blind first** (the crux + truth sources + its named gap + §2's contract — the crux is the seat's *question*; A0b's leak check still bars other seats' positions and names). Echoed in §1's format, its gap passing the transposition test, counted against the seat maximum and the one-synthesized cap, and never in the consensus quantifier. **At most 1 per round, 3 per run.**
 
-**Termination, in order**: ① no open cruxes → DA-final → §5. ② only `value` and `unlookupable` open → DA-final → §5. ③ **deadlock**: a round in which no crux closed and no new artifact or citation entered. **It owes its evidence** — the searches you ran that returned nothing new; a deadlock reached by not looking is a free exit. ④ round cap. Cruxes left open by ③/④ still go through DA-final and §5's value queue; the rest ride to the terminal.
+**Termination, in order**: ① no open cruxes → DA-final → §5. ② only `value` and `unlookupable` open → DA-final → §5. ③ **deadlock**: a round in which no crux closed and no new artifact or citation entered. **It owes its evidence** — paste the searches you ran that returned nothing new. This is a disclosure, not a checked gate: nothing distinguishes "looked and found nothing" from "did not look", so the pasted searches are the only thing standing against a lazy deadlock. ④ round cap. Cruxes left open by ③/④ still go through DA-final and §5's value queue; the rest ride to the terminal.
 
 ## 5. The human, and the terminal
 
@@ -231,7 +231,7 @@ On C<n>: <rebut | concede | partially concede>
 
 **② The terminal.** Build the **candidate record** (§8) at `workdir/candidate-<n>.md` — a new file per candidate, because a rejected candidate is the strongest signal the council is off and overwriting it erases the finding. `**Status**: <token withheld>`; no line-initial terminal verdict anywhere in it (A9 greps `^(CONVERGED|UNRESOLVED|STOPPED)`). Run §6's audit. **One audit + at most one re-audit per candidate**; a candidate rebuilt after a human rejection is a new candidate with a fresh budget.
 
-**Read the verdict from the auditor's own record in the log** — the platform's copy, which you cannot rewrite — not from what you transcribed.
+**Read the verdict from the auditor's own record in the log** — the platform's copy the audit reads, not from what you transcribed. ("Cannot rewrite" is not a cryptographic guarantee — the log runs under your uid, and the honesty boundary lists tampering as the uncatchable floor; it means the audit reads the platform's copy, so rewriting *your transcript* changes nothing the audit sees.)
 
 Take the **first matching row**:
 
@@ -368,7 +368,7 @@ A3  Every fact: the criterion is quoted verbatim from a traced seat's "what woul
     platform's copy of that return** (moderator-authored, or lifted from a bare `[fact:]` locator ⇒ FAIL);
     `criterion-C<n>` precedes `artifact-C<n>` in the log's record order; re-run the command, or re-read the
     `file:line` and diff the quoted line — same ruling under the same criterion (bytes may differ for a
-    time-varying command; **a flipped truth value is a FAIL, not a tolerance**).
+    time-varying command; **a flipped truth value is a FAIL on a stable fact** — where the value can legitimately change between the seat's run and the re-run, the divergence is disclosed as `time-varying`, not FAILed).
     **`html.unescape()` BOTH SIDES before any diff here or in A5.** The moderator only ever saw the
     `<task-notification>` copy, which is entity-escaped; the sidecar you read is raw. And the return contract
     *mandates* angle brackets — `[fact: <file:line>]`, `threshold=<comparator+value+unit>` — so a criterion
@@ -420,8 +420,7 @@ A9  `workdir` resolves from §0's echo **in the log** (payload ≠ echo ⇒ FAIL
     every `TOOL` row you have is the moderator's and **you have not checked the seats at all**. Seats go to
     `Explore`, which **has `Bash`** — a seat *can* write (`> file`, `sed -i`), and this sweep is the only thing
     that catches it. Between §0's echo and now: a write tool naming a path outside `workdir`, or a shell command
-    containing a redirect (`>`, `>>`, `| tee`) or a mutating verb (`rm mv cp ln touch chmod sed -i dd git commit
-    git add git checkout apply_patch`) targeting a path outside `workdir` ⇒ FAIL. `mkdir workdir` is the one
+    containing a redirect (`>`, `>>`, `| tee`) or a mutating verb (`rm mv cp ln touch chmod sed -i dd git commit git add git checkout apply_patch`, and any sibling that writes: `truncate`, `perl -i`, `tee`, `chown` …) targeting a path outside `workdir` ⇒ FAIL. The verb list is illustrative, **not a closed set** — the test is whether it writes outside `workdir`, and when in doubt, treat it as a write. `mkdir workdir` is the one
     exception §0 requires. A command whose text appears verbatim on a `criterion-C<n>` / `artifact-C<n>` /
     `consulted:` line **already in the log before it ran** is a §3 artifact command, not a write — including
     `npm ls` / `pip show`, which a seat's ① routinely asks for. Everything else — `openssl`, `find`, `grep`,
@@ -455,9 +454,10 @@ Run: <nonce> · Workdir: <path> · Candidate: <n>
 fabrication was caught, NOT = the conclusion is right.**
 **When `correlated yes` or `DA no-op`, the consensus set may not be cited as support here** — unattacked, or
 one model agreeing with itself, it launders correlation into a reason. This is the single home of that rule.
-**Traceability** (one of four; no fifth): ① a seat's position verbatim (name it); ② the human's choice;
+**Traceability** (one of five; no sixth): ① a seat's position verbatim (name it); ② the human's choice;
 ③ your recommendation after explicit delegation (name the crux — and note that nothing attacked it);
-④ a synthesis of ①②③ — every claim it makes must appear in one of them; it may recombine and exclude, never
+④ **a fact ruling's criterion + artifact** (§3) — the command output or `file:line` that closed the crux;
+⑤ a synthesis of ①–④ — every claim it makes must appear in one of them; it may recombine and exclude, never
 introduce.
 
 ## Quality
