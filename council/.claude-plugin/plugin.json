@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2026.7.4",
+  "version": "2026.7.5",
   "description": "Convene a council of agency-agents specialists on one decision with nothing written yet. One seat per named viewpoint gap (no upper limit); each gives an independent blind position; the main agent only aggregates and adjudicates facts. Facts close only by stating the decision criterion before running the command and pasting the verbatim output; judgment calls go to the human /grilling-style, one question at a time with a recommended answer; everything else is argued out in rounds. Before any verdict a mandatory auditor in a fresh context re-runs the commands and checks the citations. Self-driving — no external harness needed. Requires the agency-agents catalog at ~/.agency-agents (install per the README); a role it cannot resolve there halts the run rather than standing in a fabricated expert.",
   "author": {
     "name": "HerbertGao",
