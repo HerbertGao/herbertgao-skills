@@ -34,3 +34,23 @@ tasks:
       - type: deterministic
         run: bash graders/prereq-halt.sh
         weight: 1.0
+
+  # #9 验收仪器：§1f 冷读 skills/council/SKILL.md，unfollowable ≤ 3（诚实标注为判断/floor 的规则不计）。
+  # 重写前基线 ~11–18；重写后 trials 0,0,1。计数随机 → trials:5 / threshold:0.8 是回归对照线。
+  - name: unfollowable-floor
+    agent: claude
+    instruction: |
+      ./SKILL.md 是一个 agent skill。对它做一次 §1f 式**冷读**（只读这一个文件，不读 git 历史/其他文件/网络）。
+      你是一个必须把这些规则当作可执行 LLM agent 去执行的新读者。一条规则只有在你**确实无法满足**时才算
+      `unfollowable`：自相矛盾、要求不可能之事、或声称有一个它并未提供的机械检查/穷举表。一条**诚实标注自己是
+      "判断"或已披露的 "floor"**（明说不是机械门）的规则是可遵守的——你照着做判断并披露即可，**不算** unfollowable。
+      把结果写入 OUTCOME.md：每条 unfollowable 一行（逐字引用 + 为何），最后一行**严格**写：
+        COUNT: unfollowable = <n>
+      写完立即停止。
+    workspace:
+      - src: ../../skills/council/SKILL.md
+        dest: SKILL.md
+    graders:
+      - type: deterministic
+        run: bash graders/unfollowable-floor.sh
+        weight: 1.0

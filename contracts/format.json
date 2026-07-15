@@ -164,6 +164,7 @@
       "regex": "not-run\\([^)]*\\)",
       "allowed": [
         "not-run(...)",
+        "not-run(content-filter)",
         "not-run(empty)",
         "not-run(missing guard checklist)",
         "not-run(tier unverified)"

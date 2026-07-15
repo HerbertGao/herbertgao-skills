@@ -34,3 +34,55 @@ tasks:
       - type: deterministic
         run: bash graders/prereq-halt.sh
         weight: 1.0
+
+  # #14 收敛判据：converging-with-regressions 例外——计数严格下降 ∧ 无 requirement 复发 ⇒ 续跑；
+  # 复发或计数不降 ⇒ NOT-CONVERGED。判据是从纯散文（无原生 ID）读出 requirement 复发，故 agent: claude 本机跑。
+  - name: converging-with-regressions
+    agent: claude
+    instruction: |
+      ./SKILL.md 是 review-loop skill。读它的 `## Termination` 段——`NOT-CONVERGED` 行、
+      "**Converging-with-regressions**" 段、以及顶部 `fix-induced blocker` 定义。
+      把 Termination 判据应用到两个 case（两者都已满足"两轮 Regression ≥1"的触发条件）：
+      CASE A = ./case-conv.md，CASE B = ./case-div.md。
+      对每个 case 判定终态是 `NOT-CONVERGED` 还是 `continue`（converging-with-regressions），
+      写入 OUTCOME.md，**严格用这两行开头**（grader 逐字 grep）：
+        CASE-A-VERDICT: <continue | NOT-CONVERGED>
+        CASE-B-VERDICT: <continue | NOT-CONVERGED>
+      其后可附推理。写完立即停止——不要真的跑任何 review。
+    workspace:
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/conv-div/case-conv.md
+        dest: case-conv.md
+      - src: fixtures/conv-div/case-div.md
+        dest: case-div.md
+    graders:
+      - type: deterministic
+        run: bash graders/converging.sh
+        weight: 1.0
+
+  # #13 / #15 §1f 分类：read-set + authority-aware——钉死外部引用 ⇒ external-reference-required（不计门），
+  # 真实本地缺口 ⇒ unfollowable-local（阻断），标准名词不计 undefined。
+  - name: authority-classification
+    agent: claude
+    instruction: |
+      ./SKILL.md 是 review-loop skill。读它的 `### 1f` 段——冷读 pin（"Read exactly these files…"）、
+      Q4/Q5、以及 `unfollowable`（拆 `unfollowable-local` / `external-reference-required`）与 `undefined` 定义。
+      read-set 恰好是这两个文件（一个 co-authored bundle），只读它们：./design.md 与 ./specs/decoder.md。
+      里面引用的 OpenAPI 契约是**外部的**、只按 path+version+sha256 钉死，不在 read-set 里，不要去开。
+      做冷读并按 §1f 分类，写入 OUTCOME.md，**严格含这三行**（grader 逐字 grep）：
+        PINNED-OPENAPI-COUNTS-TOWARD-GATE: <yes | no>
+        UNFOLLOWABLE-LOCAL-COUNT: <n>
+        UNDEFINED-TERMS: <逗号分隔的术语列表>
+      其后可附完整分类。写完立即停止。
+    workspace:
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/authority/design.md
+        dest: design.md
+      - src: fixtures/authority/specs/decoder.md
+        dest: specs/decoder.md
+    graders:
+      - type: deterministic
+        run: bash graders/authority.sh
+        weight: 1.0
