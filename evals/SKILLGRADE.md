@@ -2,6 +2,8 @@
 
 本仓库用 [skillgrade](https://www.npmjs.com/package/skillgrade) 对 agent skill 做行为验证。每个 skill 在 `evals/<skill>/` 下有自己的 `eval.yaml`。
 
+现有 eval：`council`（prereq-halt / unfollowable-floor / advisory-routing / advisory-debate-shape）、`opsx`（reconcile-false-green / checkbox-locate / snapshot-not-subtract，守步骤 6 的双向对账、定位链、树快照三处最脆弱机制）。每套 grader 都带 `graders/self-test.sh`（fixture + 假绿探针，改 grader 前先跑）。
+
 ## 安装
 
 无需全局安装，直接 `npx skillgrade` 即可。

@@ -77,7 +77,7 @@ git -C ~/.agency-agents rev-parse HEAD               # the catalog rev A2 will r
 run: <nonce> | workdir: <path> | catalog: <rev> | mode: <audited|advisory>
 proposition: <one refutable sentence>
 truth sources: <the paths/docs every seat gets in round 1>
-assurance gaps: <none | comma-separated canonical ids: prompt-provenance, return-provenance, model-census, tool-write-audit, dispatch-topology, round-one-simultaneity, auditor-re-run-capability, confirmation-provenance>
+assurance gaps: <none | comma-separated canonical ids — see Assurance modes on Claude Code>
 audited only: audit-procedure: <absolute installed-skill path> · version/commit:<id> · sha256:<digest> | enumerator: <absolute reference path> · version/commit:<id> · sha256:<digest>
 ```
 
@@ -106,7 +106,6 @@ The proposition goes **verbatim** to every seat; the dispatch prompt carries no 
 
 - **Three to eight *non-opposing* axes**, one seat each; the **opposing seat** (§3) is a further seat on its own axis, named here and never re-designated. **Minimum council: 4 seats; maximum 9, tie-breakers included.** Outside that ⇒ `STOPPED (not a council question)` — below it there is no conflict to arbitrate; above it, fan-out quality collapses.
 - **One seat per named gap.** A seat with no gap merely restates another and thickens the illusion of independent agreement.
-- Below 2 seats mid-run ⇒ `STOPPED (seats exhausted)`.
 
 **The catalog is a prerequisite the user installs (per the README); the council reads it and never writes to it** — a seat that argues a decision comes from a checkout the user chose to trust, at a revision they control (A9 checks the no-write side).
 
@@ -281,7 +280,7 @@ Advisory skips this section and records auditor `not run (advisory)`.
 
 Dispatch a **fresh-context** `general-purpose` worker (it needs Bash), taking the next `k`.
 
-**Payload has three forms.** Candidate audit: `run nonce · auditor k · workdir · candidate: <n> · seat echo · catalog rev · audit-procedure path+version/commit+SHA-256 · enumerator path+version/commit+SHA-256`; `candidate: <n>` is mandatory because a rejection rebuilds it. A0-only early-stop uses `early-stop reason`; A9 does not run. Attestation uses §5's smaller payload with the exact same pins. Verify every pin against §0 before reading either file; mismatch is A0 fabrication and emits `UNRESOLVED (audit-failed: fabrication)`, never retroactively advisory.
+**Payload has three forms.** Candidate audit: `run nonce · auditor k · workdir · candidate: <n> · seat echo · catalog rev · audit-procedure path+version/commit+SHA-256 · enumerator path+version/commit+SHA-256`; `candidate: <n>` is mandatory because a rejection rebuilds it. A0-only early-stop uses `early-stop reason`; A9 does not run. Attestation uses §5's smaller payload with the exact same pins. First hash-verify each pinned file against the payload's own `sha256:` — a digest match needs no log — then reconcile those pins against §0 before trusting either file; mismatch is A0 fabrication and emits `UNRESOLVED (audit-failed: fabrication)`, never retroactively advisory.
 
 For `post-confirmation-attestation`, run the enumerator and only §5's identity, confirmation, dispatch and actual-write interval gates; do not re-run the earlier A0-A9 window. End with `PASS` or `FAIL: confirmation-unverifiable`.
 
@@ -458,7 +457,7 @@ introduce.
 Mode: <audited|advisory>
 Round-1 manifest: <parallel|batched> · <prompt digests or full frozen prompts>
 Preserved: <catalog personas; fresh round-one contexts; crux ledger; DA/cross-exam; human value rulings; minority report>
-Assurance gaps: <none | comma-separated canonical ids: prompt-provenance, return-provenance, model-census, tool-write-audit, dispatch-topology, round-one-simultaneity, auditor-re-run-capability, confirmation-provenance>
+Assurance gaps: <none | comma-separated canonical ids — see Assurance modes on Claude Code>
 Soft checks: <commands and exact scope | none>
 
 ## Audit binding

@@ -108,7 +108,12 @@
       "marker_prefix": null,
       "marker_forms": [],
       "required_verbatim": [
-        "<组>/<角色>：[local: <源路径>]"
+        "<组>/<角色>：[local: <源路径>]",
+        "GIT_INDEX_FILE=\"$TMPIDX\" git add -A >/dev/null && GIT_INDEX_FILE=\"$TMPIDX\" git write-tree",
+        "并行的前提是隔离，不是写集",
+        "不要拿 subagent 返回里的 `task` 去定位",
+        "⋃filesChanged ∖ ground",
+        "把受影响组的复选框改回 `- [ ]`"
       ],
       "catalog_paths": {
         "Frontend Developer": "engineering/engineering-frontend-developer.md",

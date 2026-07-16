@@ -4,7 +4,7 @@ skill: ../../skills/openspec-apply-change-subagent
 
 defaults:
   agent: claude
-  provider: local        # grouping 在专家解析之前停止，不依赖 catalog 隔离
+  provider: local
   trials: 5
   timeout: 1800
   threshold: 0.8
@@ -37,7 +37,6 @@ tasks:
         weight: 1.0
 
   # 评议会 B1 裁决的行为面：缺 catalog ⇒ 停机点名，不造替身、不自装
-  # 隔离方式：command agent + 假 HOME（codex 认证经 CODEX_HOME 存活，无需 API key）
   - name: prereq-halt
     agent: command
     command: bash bin/run-codex.sh
@@ -71,4 +70,83 @@ tasks:
     graders:
       - type: deterministic
         run: bash graders/prereq-halt.sh
+        weight: 1.0
+
+  # 步骤 6 校验②：反向对账（⋃filesChanged ∖ ground）必须抓住"申报改了、实际没改"并 halt。
+  - name: reconcile-false-green
+    agent: command
+    command: bash bin/run-codex.sh
+    threshold: 1.0
+    trials: 3
+    instruction: |
+      ./SKILL.md 是一个编排 agent skill。你是它的主 agent。读 ./wave-scenario.md：
+      一个 subagent 已返回,主 agent 已自己跑出地面真相。**只做步骤 6 的四道机械校验**,
+      不派任何新 subagent、不改任何文件。把结论写入 OUTCOME.md,严格用这些行:
+        CHECK-RECONCILE: <pass | fail>   # 双向对账(步骤6②)结果
+        VERDICT: <mark | halt>           # 该组能否标记复选框
+      若反向对账发现某个文件"声称改了实际没改",逐一在正文点名那个文件的完整路径。
+      不要添加其它 VERDICT 行。写完即停。
+    workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
+      - src: ../../skills/openspec-apply-change-subagent/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/wave-scenario.md
+        dest: wave-scenario.md
+    graders:
+      - type: deterministic
+        run: bash graders/reconcile.sh
+        weight: 1.0
+
+  # 步骤 6 定位链：按 CLI description 定位复选框（容忍 subagent task 文本漂移）。
+  - name: checkbox-locate
+    agent: command
+    command: bash bin/run-codex.sh
+    threshold: 1.0
+    trials: 3
+    instruction: |
+      ./SKILL.md 是一个编排 agent skill。读 ./locate-scenario.md。一波已 review 通过,
+      现在要按 SKILL.md 步骤 6 的定位链,为 completed[] 的每个 taskId 定位它在 tasks.md
+      里的**未勾选**复选框行。把结果写入 OUTCOME.md,严格用这些行(行号为 tasks.md 物理行号):
+        TASK-2: line <n>
+        TASK-3: line <n>
+      不派 subagent、不改文件。写完即停。
+    workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
+      - src: ../../skills/openspec-apply-change-subagent/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/locate-scenario.md
+        dest: locate-scenario.md
+    graders:
+      - type: deterministic
+        run: bash graders/locate.sh
+        weight: 1.0
+
+  # 步骤 5 树快照 vs porcelain 相减：波首已脏的文件被相减会漏掉,树快照按内容比不漏。
+  - name: snapshot-not-subtract
+    agent: command
+    command: bash bin/run-codex.sh
+    threshold: 1.0
+    trials: 3
+    instruction: |
+      ./SKILL.md 是一个编排 agent skill。读 ./snapshot-scenario.md。按 SKILL.md 步骤 5/6
+      判定波次 2 的 ground 应该是什么,以及"用 git status 相减基线脏文件集"这种口径会漏掉什么。
+      写入 OUTCOME.md,严格用这些行:
+        GROUND: <逗号分隔的文件列表>      # 波次2 真正的 ground
+        TRAP: <会被 porcelain 相减漏掉的文件 + 一句为什么>
+      不派 subagent、不改文件。写完即停。
+    workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
+      - src: ../../skills/openspec-apply-change-subagent/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/snapshot-scenario.md
+        dest: snapshot-scenario.md
+    graders:
+      - type: deterministic
+        run: bash graders/snapshot.sh
         weight: 1.0
