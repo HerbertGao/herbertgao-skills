@@ -1,6 +1,6 @@
 {
   "name": "opsx",
-  "version": "2026.7.6",
+  "version": "2026.7.7",
   "description": "Orchestrated OpenSpec apply — the main agent groups pending tasks by scope and dispatches a worker per group (parallel then serial by dependency), only managing OpenSpec state and reviews; it never writes implementation code itself. Ships /opsx:apply-subagent (Claude subagent worker) with its SOT skill. Requires the agency-agents catalog at ~/.agency-agents (install per the README); a role it cannot resolve there halts the run rather than standing in a fabricated expert.",
   "author": {
     "name": "HerbertGao",
