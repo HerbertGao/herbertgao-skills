@@ -72,7 +72,12 @@
         "Scope fence:",
         "Anchors:",
         "Simplicity:",
-        "Legibility:"
+        "Legibility:",
+        "Residual-floor:",
+        "Continuation:",
+        "Spot-audit:",
+        "Landed:",
+        "Regression:"
       ],
       "tokens": [
         "APPROVE",
@@ -80,7 +85,9 @@
         "CLEAR",
         "APPROVE-DEGRADED",
         "CAPPED",
-        "OUT-OF-SCOPE-PENDING"
+        "OUT-OF-SCOPE-PENDING",
+        "NOT-CONVERGED",
+        "PREREQUISITE-MISSING"
       ],
       "$comment_echo": "The status block is what the evaluator reads. A renamed label is a predicate that silently stops firing.",
       "exhaustive": [],
@@ -133,26 +140,106 @@
       "marker_prefix": null,
       "marker_forms": [],
       "required_verbatim": [
-        {"literal": "find ~/.agency-agents -mindepth 2 -type f -name '*.md' \\\n  ! -iname 'README*' ! -iname 'CONTRIBUTING*' ! -iname 'SECURITY.md' ! -path '*/.github/*' 2>/dev/null | sort", "selector": "section-prefix:1.", "count": 1},
-        {"literal": "candidate-digest: sha256:<digest>", "selector": "section-prefix:5.", "count": 1},
-        {"literal": "retry-for: <failed k>", "selector": "section-prefix:2.", "count": 1},
-        {"literal": "re-dispatch-for: <superseded k>", "selector": "section-prefix:2.", "count": 1},
-        {"literal": "post-confirmation-attestation", "selector": "section-prefix:5.", "count": 1},
-        {"literal": "post-candidate evidence envelope", "selector": "section-prefix:5.", "count": 2},
-        {"literal": "predate the first seat dispatch", "selector": "section-prefix:6.", "count": 1},
-        {"literal": "platform-authored confirmation record", "selector": "section-prefix:5.", "count": 1},
-        {"literal": "confirmation-provenance", "selector": "before-section-prefix:0.", "count": 1},
-        {"literal": "audited only: audit-procedure:", "selector": "fences-in-section-prefix:0.", "count": 1},
-        {"literal": "version/commit:<id>", "selector": "fences-in-section-prefix:0.", "count": 2},
-        {"literal": "full SHA-256", "selector": "section-prefix:1.", "count": 1},
-        {"literal": "git status --porcelain=v1 -z -uall", "selector": "before-section-prefix:0.", "count": 1},
-        {"literal": "settle/re-read", "selector": "before-section-prefix:0.", "count": 1},
-        {"literal": "Reserve the line prefixes", "selector": "section-prefix:5.", "count": 1},
-        {"literal": "any such line in candidate bytes is A9 failure", "selector": "section-prefix:5.", "count": 1},
-        {"literal": "if candidate bytes must change, build and freeze `candidate-<n+1>.md` with a fresh audit budget", "selector": "section-prefix:5.", "count": 1},
-        {"literal": "**`ADVISORY (debate-converged; unaudited)`**", "selector": "section-prefix:5.", "count": 1},
-        {"literal": "**`ADVISORY (N open; unaudited)`**", "selector": "section-prefix:5.", "count": 1},
-        {"literal": "must never cite agreement as support", "selector": "before-section-prefix:0.", "count": 1}
+        {
+          "literal": "find ~/.agency-agents -mindepth 2 -type f -name '*.md' \\\n  ! -iname 'README*' ! -iname 'CONTRIBUTING*' ! -iname 'SECURITY.md' ! -path '*/.github/*' 2>/dev/null | sort",
+          "selector": "section-prefix:1.",
+          "count": 1
+        },
+        {
+          "literal": "candidate-digest: sha256:<digest>",
+          "selector": "section-prefix:5.",
+          "count": 1
+        },
+        {
+          "literal": "retry-for: <failed k>",
+          "selector": "section-prefix:2.",
+          "count": 1
+        },
+        {
+          "literal": "re-dispatch-for: <superseded k>",
+          "selector": "section-prefix:2.",
+          "count": 1
+        },
+        {
+          "literal": "post-confirmation-attestation",
+          "selector": "section-prefix:5.",
+          "count": 1
+        },
+        {
+          "literal": "post-candidate evidence envelope",
+          "selector": "section-prefix:5.",
+          "count": 2
+        },
+        {
+          "literal": "predate the first seat dispatch",
+          "selector": "section-prefix:6.",
+          "count": 1
+        },
+        {
+          "literal": "platform-authored confirmation record",
+          "selector": "section-prefix:5.",
+          "count": 1
+        },
+        {
+          "literal": "confirmation-provenance",
+          "selector": "before-section-prefix:0.",
+          "count": 1
+        },
+        {
+          "literal": "audited only: audit-procedure:",
+          "selector": "fences-in-section-prefix:0.",
+          "count": 1
+        },
+        {
+          "literal": "version/commit:<id>",
+          "selector": "fences-in-section-prefix:0.",
+          "count": 2
+        },
+        {
+          "literal": "full SHA-256",
+          "selector": "section-prefix:1.",
+          "count": 1
+        },
+        {
+          "literal": "git status --porcelain=v1 -z -uall",
+          "selector": "before-section-prefix:0.",
+          "count": 1
+        },
+        {
+          "literal": "settle/re-read",
+          "selector": "before-section-prefix:0.",
+          "count": 1
+        },
+        {
+          "literal": "Reserve the line prefixes",
+          "selector": "section-prefix:5.",
+          "count": 1
+        },
+        {
+          "literal": "any such line in candidate bytes is A9 failure",
+          "selector": "section-prefix:5.",
+          "count": 1
+        },
+        {
+          "literal": "if candidate bytes must change, build and freeze `candidate-<n+1>.md` with a fresh audit budget",
+          "selector": "section-prefix:5.",
+          "count": 1
+        },
+        {
+          "literal": "**`ADVISORY (debate-converged; unaudited)`**",
+          "selector": "section-prefix:5.",
+          "count": 1
+        },
+        {
+          "literal": "**`ADVISORY (N open; unaudited)`**",
+          "selector": "section-prefix:5.",
+          "count": 1
+        },
+        {
+          "literal": "must never cite agreement as support",
+          "selector": "before-section-prefix:0.",
+          "count": 1
+        }
       ],
       "catalog_paths": {
         "Backend Architect": "engineering/engineering-backend-architect.md",
@@ -248,7 +335,8 @@
         "not-run(content-filter)",
         "not-run(empty)",
         "not-run(missing guard checklist)",
-        "not-run(tier unverified)"
+        "not-run(tier unverified)",
+        "not-run(analyst-offspec)"
       ]
     },
     {
@@ -307,6 +395,13 @@
       "regex": "PREREQUISITE-MISSING\\s*\\([^)]*\\)",
       "allowed": [
         "PREREQUISITE-MISSING (<lane> — see README)"
+      ]
+    },
+    {
+      "$comment": "Same closure as CAPPED: the convergence hand-back's one canonical form plus its template ellipsis.",
+      "regex": "NOT-CONVERGED\\s*\\([^)]*\\)",
+      "allowed": [
+        "NOT-CONVERGED (fix-induced blockers in 2 consecutive rounds; N items left, listed)"
       ]
     }
   ]

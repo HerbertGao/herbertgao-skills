@@ -14,6 +14,10 @@ git clone https://github.com/msitarzewski/agency-agents ~/.agency-agents
 
 这些 skill 的 SKILL.md 里带着**运行期字符串**（层级 marker、补救命令、catalog 源路径），它们自己的闸门要逐字匹配——错一个字符，闸门就静默失效。所以它们由 [`contracts/format.json`](./contracts/format.json) 定义、[`scripts/check-format.py`](./scripts/check-format.py) 机械校验（每次 push 跑 CI，发版前再跑一遍），并会拿真实 catalog 验证路径表在干净安装上确实解析得到。
 
+## 推荐配套：ponytail
+
+新环境(Claude Code / Codex / Trae / OpenCode)装机时建议顺手装 [ponytail](https://github.com/DietrichGebert/ponytail)(Claude Code 与 Codex 均有包装)——主 agent 的精简纪律(YAGNI 阶梯、最小 diff)。**忘装无硬性后果**:本仓库的 review-loop/council 已把精简阶梯内嵌在 SKILL 文本里,不依赖它;但环境主 agent 的日常写码行为会失去这层约束。无插件机制的环境(Trae/OpenCode 等),把 ponytail 的核心 persona 粘进该环境的全局指令文件(AGENTS.md 等价物)即可,一次性拷贝。
+
 ## 安装
 
 ### Claude Code — plugin marketplace
