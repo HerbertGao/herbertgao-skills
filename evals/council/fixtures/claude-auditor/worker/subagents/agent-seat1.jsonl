@@ -1,0 +1,3 @@
+{"message":{"role":"assistant","content":[{"type":"tool_use","name":"Write","id":"write-note","input":{"file_path":"/tmp/council-workdir/note.md","content":"evidence"}}]}}
+{"message":{"role":"assistant","content":[{"type":"tool_use","name":"mcp__deploy__production","id":"unknown-write","input":{"target":"staging"}}]}}
+{"message":{"role":"assistant","content":[{"type":"text","text":"Position: use the verified option"}]}}

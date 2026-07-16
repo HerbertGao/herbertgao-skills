@@ -1,4 +1,4 @@
 interface:
   display_name: "Council"
-  short_description: "Multi-perspective expert council"
+  short_description: "Audited CONVERGED or non-authorizing ADVISORY council"
   default_prompt: "Use $council to weigh this decision from several expert perspectives."

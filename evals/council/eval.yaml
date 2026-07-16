@@ -35,8 +35,8 @@ tasks:
         run: bash graders/prereq-halt.sh
         weight: 1.0
 
-  # #9 验收仪器：§1f 冷读 skills/council/SKILL.md，unfollowable ≤ 3（诚实标注为判断/floor 的规则不计）。
-  # 重写前基线 ~11–18；重写后 trials 0,0,1。计数随机 → trials:5 / threshold:0.8 是回归对照线。
+  # 可执行性验收：§1f 冷读 skills/council/SKILL.md，unfollowable ≤ 3（诚实标注为判断/floor 的规则不计）。
+  # 未经写作模式重写的基线约 11–18，重写后实测 0–1。计数随机 → trials:5 / threshold:0.8 是回归对照线。
   - name: unfollowable-floor
     agent: claude
     instruction: |
@@ -53,4 +53,89 @@ tasks:
     graders:
       - type: deterministic
         run: bash graders/unfollowable-floor.sh
+        weight: 1.0
+
+  # Core debate survives weaker hosts; assurance determines the terminal token.
+  - name: advisory-routing
+    threshold: 1.0
+    instruction: |
+      ./SKILL.md is the council skill. Read its Platform Adapter, round-one dispatch rule,
+      advisory terminal path, and implementation boundary. Apply them to the twelve independent
+      host profiles in ./host-profiles.md. Write OUTCOME.md with exactly these lines first:
+        PROFILE-A-MODE: <audited | advisory | stopped>
+        PROFILE-A-ROUND1: <parallel | batched | n/a>
+        PROFILE-A-LATER-ROUNDS: <continuation | fresh-redispatch | n/a>
+        PROFILE-A-MODEL-CENSUS: <host-recorded | unknown>
+        PROFILE-A-SOFT-CHECK: <git-snapshot | other | none>
+        PROFILE-A-ASSURANCE-GAPS: <comma-separated canonical gap ids in the order the skill's §0 echo enumerates them, no spaces | none>
+        PROFILE-A-TOKEN: <full terminal token>
+        PROFILE-A-AUTHORIZES-IMPLEMENTATION: <yes | no>
+        PROFILE-B-MODE: <audited | advisory | stopped>
+        PROFILE-B-CONVERGED-REQUIRES: <comma-separated ids from audit-pass,zero-open-cruxes,human-confirmation,post-confirmation-attestation, no spaces>
+        PROFILE-B-TOKEN: <full terminal token>
+        PROFILE-C-TOKEN: <full terminal token>
+        PROFILE-D-TOKEN: <full terminal token>
+        PROFILE-E-MODE: <audited | advisory | stopped>
+        PROFILE-E-ROUND1: <parallel | batched | n/a>
+        PROFILE-E-LATER-ROUNDS: <continuation | fresh-redispatch | n/a>
+        PROFILE-E-TOKEN: <full terminal token>
+        PROFILE-E-AUTHORIZES-IMPLEMENTATION: <yes | no>
+        PROFILE-F-TOKEN: <full terminal token>
+        PROFILE-G-TOKEN: <full terminal token>
+        PROFILE-E-WORKER-PREFERENCE: <restricted | full-capability | n/a>
+        PROFILE-E-MODEL-CENSUS: <host-recorded | unknown>
+        PROFILE-E-ASSURANCE-GAPS: <comma-separated canonical gap ids in the order the skill's §0 echo enumerates them, no spaces | none>
+        PROFILE-E-SOFT-CHECK: <git-snapshot | other | none>
+        PROFILE-H-TOKEN: <full terminal token>
+        PROFILE-I-TOKEN: <full terminal token>
+        PROFILE-J-TOKEN: <full terminal token>
+        PROFILE-K-TOKEN: <full terminal token>
+        PROFILE-L-TOKEN: <full terminal token>
+      Do not add any other line. Do not run a real council or edit any source file.
+    workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
+      - src: ../../skills/council/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/host-profiles.md
+        dest: host-profiles.md
+    graders:
+      - type: deterministic
+        run: bash graders/advisory-routing.sh
+        weight: 1.0
+
+  # Weaker provenance changes assurance, not the core multi-seat debate.
+  - name: advisory-debate-shape
+    threshold: 1.0
+    instruction: |
+      Read ./SKILL.md and replay ./advisory-debate-script.md without dispatching workers.
+      Write OUTCOME.md with exactly these lines first:
+        DEBATE-MODE: <audited | advisory | stopped>
+        DEBATE-SEATS: <number>
+        DEBATE-ROUND1: <frozen-before-returns | not-frozen>
+        DEBATE-ROUND1-RETURNS: <number>-<canonical | moderator-visible>-<audited | unaudited>
+        DEBATE-DISPATCH-LEDGER: <exact ordered ledger from the replay>
+        DEBATE-CRUX-LEDGER: <ordered as C<n>-<class>, comma-separated, no spaces>
+        DEBATE-UNOPPOSED: <each as U<n>-<seat>.r<i>->unopposed->assumption, joined by ';', append +DA-final-b when the position is also a class-b DA-final target | dropped>
+        DEBATE-DA: <ran | skipped>
+        DEBATE-CROSS-EXAM: <ran-all-traced-seats | partial | skipped>
+        DEBATE-DA-FINAL: <ran-both-classes | ran-partial | skipped>
+        DEBATE-HUMAN-VALUE: <one-at-a-time | batched | skipped>
+        DEBATE-MINORITY-REPORT: <present | absent>
+        DEBATE-AUDIT: <PASS | not-run-advisory>
+        DEBATE-TOKEN: <full terminal token>
+        DEBATE-AUTHORIZES-IMPLEMENTATION: <yes | no>
+      Do not add any other line. Do not run a real council or edit source files.
+    workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
+      - src: ../../skills/council/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/advisory-debate-script.md
+        dest: advisory-debate-script.md
+    graders:
+      - type: deterministic
+        run: bash graders/advisory-debate-shape.sh
         weight: 1.0

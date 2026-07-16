@@ -1,12 +1,12 @@
 {
   "$comment": [
     "Canonical strings the skills must emit and the evaluators must match.",
-    "SKILL.md stays self-contained at runtime (npx skills add ships only SKILL.md),",
-    "so these strings live in the specs too — this file is the authority they are",
+    "Universal and Codex SKILL.md stay self-contained; a packaged plugin may ship a pinned references/ runtime dependency.",
+    "Canonical strings still live in every skill copy — this file is the authority they are",
     "checked against, mechanically, by scripts/check-format.py at release and in CI.",
     "Edit a string here and in every file listed under `files`, or the check fails.",
     "fenced_must_contain: the one block that actually gets copied. A rule can be word-perfect in the prose and absent from the template, and then nobody ever emits it.",
-    "required_verbatim is the only parity mechanism for the hand-maintained <plugin>/ copy, and it is deliberately narrow: it pins the literals an evaluator MATCHES. Everything else in that copy is unguarded — stated here so nobody mistakes green for parity."
+    "required_verbatim strings require presence anywhere; {literal, selector, count} pins load-bearing text to a structural section/fence and exact cardinality. This is the deliberately narrow parity mechanism for the hand-maintained <plugin>/ copy."
   ],
   "forbidden_everywhere": {
     "$comment": "A removed behavior leaves no notice behind: the spec reads as if it never existed. Scanned across markdown AND the shipped yaml/json entry shells — residue in an entry shell ships just the same.",
@@ -15,7 +15,16 @@
       "agency-agents@main",
       "four-tier",
       "四层",
-      "fetched tier"
+      "fetched tier",
+      "ADVISORY-CERTIFIED",
+      "ADVISORY CERTIFIED",
+      "ADVISORY_CERTIFIED"
+    ],
+    "$regex_comment": "越权搭配是一类不是三个拼写：大写 ADVISORY token 后 30 字内跟 certif/audit PASS/audited（30 抓得住剥完 unaudited 后正规 token 尾随的越权≈22 字，又放过 Terms 里 token 定义的合法解释≈37 字）；certif*（任意大小写，含全大写 CERTIFIED）前置 40 字内；audited/audit PASS 前置 20 字内。扫描前剥掉 non-certif*/unaudited。窗口值都是对全部扫描根实测过零误伤的。",
+    "regex_patterns": [
+      "ADVISORY[^\\n]{0,30}(?i:certif|audit PASS|audited)",
+      "(?i:certif\\w*)[^\\n]{0,40}ADVISORY",
+      "(?i:audit PASS|audited)[^\\n]{0,20}ADVISORY"
     ],
     "files": [
       "skills",
@@ -124,7 +133,26 @@
       "marker_prefix": null,
       "marker_forms": [],
       "required_verbatim": [
-        "find ~/.agency-agents -mindepth 2 -type f -name '*.md' \\\n  ! -iname 'README*' ! -iname 'CONTRIBUTING*' ! -iname 'SECURITY.md' ! -path '*/.github/*' 2>/dev/null | sort"
+        {"literal": "find ~/.agency-agents -mindepth 2 -type f -name '*.md' \\\n  ! -iname 'README*' ! -iname 'CONTRIBUTING*' ! -iname 'SECURITY.md' ! -path '*/.github/*' 2>/dev/null | sort", "selector": "section-prefix:1.", "count": 1},
+        {"literal": "candidate-digest: sha256:<digest>", "selector": "section-prefix:5.", "count": 1},
+        {"literal": "retry-for: <failed k>", "selector": "section-prefix:2.", "count": 1},
+        {"literal": "re-dispatch-for: <superseded k>", "selector": "section-prefix:2.", "count": 1},
+        {"literal": "post-confirmation-attestation", "selector": "section-prefix:5.", "count": 1},
+        {"literal": "post-candidate evidence envelope", "selector": "section-prefix:5.", "count": 2},
+        {"literal": "predate the first seat dispatch", "selector": "section-prefix:6.", "count": 1},
+        {"literal": "platform-authored confirmation record", "selector": "section-prefix:5.", "count": 1},
+        {"literal": "confirmation-provenance", "selector": "before-section-prefix:0.", "count": 1},
+        {"literal": "audited only: audit-procedure:", "selector": "fences-in-section-prefix:0.", "count": 1},
+        {"literal": "version/commit:<id>", "selector": "fences-in-section-prefix:0.", "count": 2},
+        {"literal": "full SHA-256", "selector": "section-prefix:1.", "count": 1},
+        {"literal": "git status --porcelain=v1 -z -uall", "selector": "before-section-prefix:0.", "count": 1},
+        {"literal": "settle/re-read", "selector": "before-section-prefix:0.", "count": 1},
+        {"literal": "Reserve the line prefixes", "selector": "section-prefix:5.", "count": 1},
+        {"literal": "any such line in candidate bytes is A9 failure", "selector": "section-prefix:5.", "count": 1},
+        {"literal": "if candidate bytes must change, build and freeze `candidate-<n+1>.md` with a fresh audit budget", "selector": "section-prefix:5.", "count": 1},
+        {"literal": "**`ADVISORY (debate-converged; unaudited)`**", "selector": "section-prefix:5.", "count": 1},
+        {"literal": "**`ADVISORY (N open; unaudited)`**", "selector": "section-prefix:5.", "count": 1},
+        {"literal": "must never cite agreement as support", "selector": "before-section-prefix:0.", "count": 1}
       ],
       "catalog_paths": {
         "Backend Architect": "engineering/engineering-backend-architect.md",
@@ -135,6 +163,7 @@
       ],
       "tokens": [
         "CONVERGED",
+        "ADVISORY",
         "UNRESOLVED",
         "STOPPED"
       ],
@@ -143,6 +172,58 @@
       "fenced_must_contain": [
         "-> seated",
         "synthesized"
+      ]
+    }
+  },
+  "consumer_surfaces": {
+    "$comment": "Installation-facing council descriptions must expose both assurance tiers and the advisory authority boundary.",
+    "council": {
+      "targets": [
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "selector": "json:plugins[name=council].description"
+        },
+        {
+          "file": "council/.claude-plugin/plugin.json",
+          "selector": "json:description"
+        },
+        {
+          "file": "codex-plugins/council/.codex-plugin/plugin.json",
+          "selector": "json:description"
+        },
+        {
+          "file": "codex-plugins/council/.codex-plugin/plugin.json",
+          "selector": "json:interface.shortDescription"
+        },
+        {
+          "file": "codex-plugins/council/.codex-plugin/plugin.json",
+          "selector": "json:interface.longDescription"
+        },
+        {
+          "file": "codex-plugins/council/skills/council/agents/openai.yaml",
+          "selector": "line:short_description"
+        },
+        {
+          "file": "README.md",
+          "selector": "section:收录的 skill"
+        },
+        {
+          "file": "skills/council/SKILL.md",
+          "selector": "line:description"
+        },
+        {
+          "file": "council/skills/council/SKILL.md",
+          "selector": "line:description"
+        },
+        {
+          "file": "codex-plugins/council/skills/council/SKILL.md",
+          "selector": "line:description"
+        }
+      ],
+      "required": [
+        "ADVISORY",
+        "CONVERGED",
+        "non-authorizing"
       ]
     }
   },
@@ -178,16 +259,26 @@
       ]
     },
     {
+      "$comment": "ADVISORY is a terminal debate result, never an audit or implementation authorization.",
+      "regex": "(?m)^[ \\t]*(?:\\|[^|\\r\\n]*\\|[ \\t]*\\*\\*`)?(?P<token>ADVISORY[^\\r\\n`*|]*)",
+      "allowed": [
+        "ADVISORY (N open; unaudited)",
+        "ADVISORY (debate-converged; unaudited)",
+        "ADVISORY (…)"
+      ]
+    },
+    {
       "regex": "STOPPED \\([^)]*\\)",
       "allowed": [
+        "STOPPED (advisory is analysis-only)",
+        "STOPPED (advisory side effect detected)",
         "STOPPED (awaiting human)",
-        "STOPPED (cannot run blind)",
+        "STOPPED (cannot run expert seats)",
         "STOPPED (no real experts: a second axis has no match)",
         "STOPPED (no real experts: catalog unavailable)",
         "STOPPED (no real experts: none on the opposing axis)",
         "STOPPED (not a council question)",
         "STOPPED (proposition needs splitting)",
-        "STOPPED (returns unverifiable)",
         "STOPPED (seats exhausted)",
         "STOPPED (…)"
       ]

@@ -17,7 +17,7 @@
     {
       "name": "council",
       "source": "./council",
-      "description": "Multi-perspective decision council for questions with NOTHING WRITTEN yet — seats one agency-agents specialist per named viewpoint gap, collects independent blind positions, numbers the disagreements into cruxes, settles facts only on a criterion quoted from a seat's blind falsifier plus a re-runnable artifact, and sends judgment calls to the human one question at a time. A mandatory fresh-context auditor reconciles every claimed dispatch against the session log and re-runs the commands before any verdict. Self-driving. Something already written is review-loop. Requires the agency-agents catalog at ~/.agency-agents (install per the README); a role it cannot resolve there halts the run rather than standing in a fabricated expert."
+      "description": "Multi-perspective council for one open decision: agency-agents specialists give independent round-one positions and argue explicit cruxes. Hosts with canonical records may reach CONVERGED after audit and human confirmation. Weaker hosts with fresh seats return ADVISORY, which is unaudited and non-authorizing. Something already written belongs in review-loop. Requires the agency-agents catalog at ~/.agency-agents."
     },
     {
       "name": "opsx",

@@ -4,7 +4,7 @@ HerbertGao 的自托管 AI coding skills 仓库。两条安装线：Claude Code 
 
 ## 前置：agency-agents
 
-专家优先用宿主已注册的原生 subagent（`registered` 档，不需要 catalog）；解析不到才去读 `~/.agency-agents`——**由你自己 clone、自己控制版本，三个 skill 只读它**。给代码盖 APPROVE、写实现代码的 subagent，来自你选择信任的那份 checkout。装一次：
+`review-loop` / `opsx` 优先用宿主已注册的原生 subagent（`registered` 档），解析不到才读 `~/.agency-agents`。`council` 必须从 catalog 枚举候选席位。catalog 由你自己 clone、控制版本，三个 skill 都只读它。装一次：
 
 ```bash
 git clone https://github.com/msitarzewski/agency-agents ~/.agency-agents
@@ -49,16 +49,18 @@ codex plugin add opsx@herbertgao-skills-codex
 | Skill | Claude Code（plugin） | 通用版（`npx skills add`） |
 | --- | --- | --- |
 | `review-loop` | [`review-loop/…/SKILL.md`](./review-loop/skills/review-loop/SKILL.md)：`subagent_type` + Codex rescue lane。 | [`skills/review-loop/SKILL.md`](./skills/review-loop/SKILL.md)：第三审查槽换成平台中立的 `Independent Reviewer`。 |
-| `council` | [`council/…/SKILL.md`](./council/skills/council/SKILL.md)：`subagent_type` + `AskUserQuestion` 拍板。 | [`skills/council/SKILL.md`](./skills/council/SKILL.md)：generic subagent。 |
+| `council` | [`council/…/SKILL.md`](./council/skills/council/SKILL.md)：Claude 审计模式 + 能力不足时的 advisory。 | [`skills/council/SKILL.md`](./skills/council/SKILL.md)：平台能力路由；保留专家辩论，按证据能力输出 `CONVERGED` 或 non-authorizing `ADVISORY`。 |
 | `opsx`（npx skill 名 `openspec-apply-change-subagent`） | [`opsx/…/SKILL.md`](./opsx/skills/openspec-apply-change-subagent/SKILL.md)：`general-purpose`。 | [`skills/openspec-apply-change-subagent/SKILL.md`](./skills/openspec-apply-change-subagent/SKILL.md)：按 catalog 源路径 + 角色名解析。 |
 
-角色解析梯：`review-loop` / `opsx` 是 `registered → local → embedded`；`council` 用自己的一套词 `registered → catalog → synthesized`——`synthesized`（自撰 persona）最多一席、且不能当反方席，一个真专家都解析不出来就 `STOPPED`。
+角色解析梯：`review-loop` / `opsx` 是 `registered → local → embedded`；`council` 是 `catalog → synthesized`——`synthesized`（自撰 persona）最多一席、且不能当反方席，一个真专家都解析不出来就 `STOPPED`。
 
 分界线：**有没有一份写出来的产物**。`review-loop` 撕**已经写出来的东西**——OpenSpec 变更、提案、spec、diff，纯散文提案也归它；`council` 判**还没写下任何产物**的开放决策（选型 / 架构 / 要不要做）。先 council 定方向，再 review-loop 撕产物。
 
+`council` 的核心是四席以上的真实专家 persona、独立首轮、crux、DA/cross-exam 与人类价值裁决。宿主能提供 canonical dispatch/return/tool records 时走 audited mode，审计通过后可输出 `CONVERGED`；只有 fresh-context 席位而缺少这些记录时仍完成辩论，但输出不具认证与实现授权效力的 `ADVISORY`。
+
 语言约定：`council` 与 `review-loop` 全线英文（避免中英孪生漂移）；`opsx` 全线中文（配 openspec-cn）。
 
-**哪份是权威**：`skills/<skill>/SKILL.md` 是 SOT。`codex-plugins/` 下是它的**逐字节副本**（`check-format.py` fail-closed 地守着）。`<plugin>/` 下的 Claude 版是**手工维护的平行副本**——它只应在 Platform Adapter 章节（`subagent_type` / `general-purpose` / `codex:codex-rescue`）与 frontmatter 上与 SOT 不同，**其余规则必须语义对等，但这一条目前只有人在守，没有机器在守**。改规则时两边都要动。
+**哪份是权威**：`skills/<skill>/SKILL.md` 是 SOT。`codex-plugins/` 下是它的**逐字节副本**（`check-format.py` fail-closed 地守着）。`<plugin>/` 下的 Claude 版是**手工维护的平行副本**；它可在 frontmatter、Platform Adapter 与宿主专属 auditor 机制上不同，共享的辩论和终态语义必须对等。`required_verbatim` 只机械守住 evaluator 会匹配的关键字面量，其余语义仍需 review。
 
 ## 结构
 

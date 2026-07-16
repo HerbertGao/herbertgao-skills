@@ -1,7 +1,7 @@
 {
   "name": "council",
   "version": "2026.7.6",
-  "description": "Codex port of the multi-perspective decision council — agency-agents specialists give independent blind positions on one decision with nothing written yet (one seat per named viewpoint gap) and debate to convergence. Facts close only on a criterion quoted from a seat's blind falsifier plus a re-runnable artifact; judgment calls go to the human one question at a time; a mandatory fresh-context auditor reconciles every claimed dispatch against the session log before any verdict. Requires the agency-agents catalog at ~/.agency-agents (install per the README); a role it cannot resolve there halts the run rather than standing in a fabricated expert.",
+  "description": "Multi-perspective council for one open decision: agency-agents specialists give independent round-one positions and argue explicit cruxes. Capable hosts may reach CONVERGED after audit and human confirmation; weaker hosts with fresh seats return ADVISORY, which is unaudited and non-authorizing. Requires the agency-agents catalog at ~/.agency-agents.",
   "author": {
     "name": "HerbertGao",
     "url": "https://github.com/HerbertGao"
@@ -20,8 +20,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Council",
-    "shortDescription": "Multi-perspective expert council for one decision.",
-    "longDescription": "Seat one specialist per named viewpoint gap, collect independent blind positions on one decision with nothing written yet, number the disagreements into cruxes, and argue them out in rounds. Facts close only on a criterion quoted from a seat's blind falsifier plus a re-runnable artifact; judgment calls go to the human one question at a time with a recommended answer. Before any result-claiming verdict a mandatory fresh-context auditor reads the session log itself, reconciles every claimed dispatch, and re-runs the commands. Requires the agency-agents catalog.",
+    "shortDescription": "Audited CONVERGED or non-authorizing ADVISORY council.",
+    "longDescription": "Seat one agency-agents specialist per named viewpoint gap, collect independent round-one positions, number disagreements into cruxes, and argue them through DA and cross-examination. Canonical host records enable audited CONVERGED after human confirmation. Without those records, fresh seats still produce ADVISORY; it is unaudited and non-authorizing.",
     "developerName": "HerbertGao",
     "category": "Productivity",
     "capabilities": [
