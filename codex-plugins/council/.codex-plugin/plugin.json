@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2026.7.9",
+  "version": "2026.7.10",
   "description": "Multi-perspective council for one open decision: agency-agents specialists give independent round-one positions and argue explicit cruxes. Capable hosts may reach CONVERGED after audit and human confirmation; weaker hosts with fresh seats return ADVISORY, which is unaudited and non-authorizing. Requires the agency-agents catalog at ~/.agency-agents.",
   "author": {
     "name": "HerbertGao",
