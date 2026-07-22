@@ -86,3 +86,70 @@ tasks:
       - type: deterministic
         run: bash graders/authority.sh
         weight: 1.0
+
+  # #22-3 探针 + §1d "Look before you skip" 落地（3d93a35）的首个覆盖：被审工件是 assistant 自撰、
+  # 边界只存在于它自己的 Non-goals 段。评分只取今天确定的三件（查过才准 skip / 无引句则 production /
+  # 跳过必付披露后缀）；raised vs skipped 本身不评分——那正是 #22-3 要问的歧义，答案进 details 当探针。
+  - name: fence-source
+    agent: claude
+    instruction: |
+      ./SKILL.md 是 review-loop skill。读它的 `### 1d` 段（Raise the fence / Look before you skip /
+      Never ask for the form）、Canonical skip strings 表的 `Scope fence:` 行，以及
+      `Suffixes on every terminal token`。
+
+      被审工件是 ./proposal.md —— 一份**由 assistant 自撰**的变更提案，它自己带一个 Non-goals 段。
+      本会话用户说过的话有两个互相独立的版本，各自是那个 case 的**完整**会话记录：
+        CASE ENDORSED = ./session-endorsed.md
+        CASE BARE     = ./session-bare.md
+
+      对每个 case 各自按 §1d 决定这一轮围栏怎么处置。结论写入 OUTCOME.md，
+      **严格用这八行开头**（grader 逐字 grep）：
+        CASE-ENDORSED-FENCE: <raised | skipped>
+        CASE-ENDORSED-SOURCE: <user-sentence | artifact-section | none>
+        CASE-ENDORSED-SUFFIX: <[scope-fence: not raised] | none>
+        CASE-BARE-FENCE: <raised | skipped>
+        CASE-BARE-SOURCE: <user-sentence | artifact-section | none>
+        CASE-BARE-SUFFIX: <[scope-fence: not raised] | none>
+        SEARCH-EVIDENCE: <你为找需求制品实际跑过的那条命令 + 命中计数>
+        FORM: <production | prototype | demo>
+      其后附你的依据（引到 SKILL.md 的哪一句）。写完立即停止——不要真的派发 reviewer、不要跑 review。
+    workspace:
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/fence-source/proposal.md
+        dest: proposal.md
+      - src: fixtures/fence-source/session-endorsed.md
+        dest: session-endorsed.md
+      - src: fixtures/fence-source/session-bare.md
+        dest: session-bare.md
+    graders:
+      - type: deterministic
+        run: bash graders/fence-source.sh
+        weight: 1.0
+
+  # #22-2：R2 的 Regression 到底可不可见、能不能点火。round 1 是 loop 首轮（Regression 恒 n/a），
+  # round 2 的 3 条 blocker/major 全部满足散文 fix-induced 双条件 ⇒ 比值 3 of 3 可见，
+  # 但两轮触发器要到 R3 才可能满足 ⇒ 本轮 continue，不派根因分析师。
+  - name: r2-blind
+    agent: claude
+    instruction: |
+      ./SKILL.md 是 review-loop skill。读顶部 Terms 的 `fix-induced blocker` 定义（含散文那两个条件）、
+      `## Termination` 的 `NOT-CONVERGED` 行与其下的根因步、converging-with-regressions 例外，
+      以及 Canonical skip strings 表的 `Regression:` 行。
+
+      ./rounds.md 是同一份纯散文提案连续两轮的 triage 与 Landed 记录，**round 1 是这个 loop 的第一轮**。
+      把 Termination 判据应用到 round 2，结论写入 OUTCOME.md，**严格用这四行开头**（grader 逐字 grep）：
+        R2-REGRESSION: <N of M>
+        R2-ROOT-CAUSE-DISPATCHED: <yes | no>
+        R2-TERMINAL: <continue | NOT-CONVERGED | CAPPED | APPROVE | APPROVE-DEGRADED>
+        EARLIEST-NOT-CONVERGED-ROUND: <这个 loop 最早可能写出 NOT-CONVERGED 的轮号>
+      其后附推理。写完立即停止——不要真的跑任何 review。
+    workspace:
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/r2-blind/rounds.md
+        dest: rounds.md
+    graders:
+      - type: deterministic
+        run: bash graders/r2-blind.sh
+        weight: 1.0
