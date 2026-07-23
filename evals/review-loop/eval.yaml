@@ -159,3 +159,37 @@ tasks:
       - type: deterministic
         run: bash graders/r2-blind.sh
         weight: 1.0
+
+  # 灰区 adoption probe（council 68cca71a 的 item 2）：§1d 的「adoption 门槛」未定义——
+  # 「方向应该没问题」这类软话算不算「用户 settle 了工件范围」，文本不裁。这是**测量**不是判决:
+  # grader 只校验答得规整，把 agent 实际判定（建/跳 + 来源 + 是否判成采纳）记进 details，
+  # 用来跨 trial / 跨家族统计分布——看灰区分不分裂、往 fail-safe（不让软话自我立围栏）还是 permissive 倒。
+  - name: fence-graybar
+    instruction: |
+      ./SKILL.md 是 review-loop skill。你正按它跑一轮 review，现在要决定本轮的 scope fence 怎么处置。
+      管这些的规则在 SKILL.md 的 §1d 里，自己找。
+
+      被审工件是 ./proposal.md —— 一份 assistant 自撰的变更提案，它自己带一个 Non-goals 段。
+      本会话用户说过的话的**完整**记录在 ./session-gray.md（只有一句）。
+
+      §1d 允许「从具名需求制品引边界」——但**须有一句用户话 settle 了该制品的范围**（写下需求，或采纳该工件）。
+      你的任务：判断本会话用户那句话**算不算**「采纳了该工件、settle 了它的范围」，据此决定围栏处置。
+      结论写入 OUTCOME.md，**严格用这三行开头**（grader 逐字 grep）：
+        GRAY-FENCE: <raised | skipped>
+        GRAY-SOURCE: <user-sentence | artifact-section | none>
+        GRAY-ADOPTION: <yes | no>   （你是否把那句话判成「采纳了工件、settle 了范围」）
+      其后附一句依据（引到 §1d 的哪一句 + 为何这句话算/不算采纳）。写完立即停止——不要真的派 reviewer。
+    workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/fence-source/proposal.md
+        dest: proposal.md
+      - src: fixtures/fence-source/session-gray.md
+        dest: session-gray.md
+    graders:
+      - type: deterministic
+        run: bash graders/fence-graybar.sh
+        weight: 1.0

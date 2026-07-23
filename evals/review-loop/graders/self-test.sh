@@ -14,5 +14,8 @@ check fence-source.sh fence-source-false-green.md 0.00
 echo "r2-blind:"
 check r2-blind.sh r2-blind-valid.md 1.00
 check r2-blind.sh r2-blind-false-green.md 0.25
+echo "fence-graybar:"
+check fence-graybar.sh fence-graybar-valid.md 1.00
+check fence-graybar.sh fence-graybar-false-green.md 0.00
 [ "$fail" = 0 ] && echo "self-test PASS" || echo "self-test FAIL"
 exit $fail
