@@ -1,6 +1,6 @@
 {
   "name": "opsx",
-  "version": "2026.7.13",
+  "version": "2026.7.14",
   "description": "Codex port of the orchestrated OpenSpec apply workflow using Codex subagents and openspec-cn. Requires the agency-agents catalog at ~/.agency-agents (install per the README); a role it cannot resolve there halts the run rather than standing in a fabricated expert.",
   "author": {
     "name": "HerbertGao",
