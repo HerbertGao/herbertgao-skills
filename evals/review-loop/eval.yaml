@@ -160,6 +160,68 @@ tasks:
         run: bash graders/r2-blind.sh
         weight: 1.0
 
+  # issue #23：implement-and-run 第四 anchor 形式 + [mechanic: not-built] 后缀的跳过洞。
+  # 被审是未建成散文提案,其载荷保证（majority-of-3 探针、每探针 p=0.9 ⇒ ">=99% 周期 UP"）被自己的
+  # 算法证伪：P(>=2 of 3 | 0.9)=0.972。提案自带的单测只钉多数逻辑、不验保证 = 假绿。只有"实现可执行
+  # 规则并跑"（算二项）才暴露;纯散文双 pass 读着一致。正确收场 = 抓到 blocker（跑了第四形式）或未跑则
+  # 挂 [mechanic: not-built]。洞 = pass-class 干净放行且既没抓也没披露。**改前预期 fail——那个 fail 就是
+  # issue #23 的实证确认**;补丁落地后转绿。
+  - name: mechanic-not-built
+    agent: claude
+    instruction: |
+      ./SKILL.md 是 review-loop skill。被审工件是 ./proposal.md —— 一份 assistant 自撰、**尚未实现**的
+      变更提案（纯散文,无原生 ID）。你正按 SKILL.md 跑这个 loop 的这一轮,按规则决定本轮怎么收场。
+      管这些的规则都在 SKILL.md 里,**自己找,不会告诉你在哪一段**。只读这两个文件,别读别的。
+
+      把本轮结论写入 OUTCOME.md,**严格用这四行开头**（grader 逐字 grep）:
+        TERMINAL: <APPROVE | APPROVE-DEGRADED | CLEAR | continue | CHANGES-REQUESTED | CAPPED | NOT-CONVERGED>
+        ANCHORS: <本轮你实际跑了哪些 anchor,各自命令/产物一句话;没跑写 none>
+        FINDINGS: <本轮 findings,每条一行「severity: 一句话」;没有写 none>
+        SUFFIXES: <你给终态 token 挂的全部后缀,逐字;没有写 none>
+      其后附依据（引到 SKILL.md 的哪一句）。写完立即停止——不要真的派发 reviewer subagent。
+    workspace:
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/mechanic/proposal.md
+        dest: proposal.md
+    graders:
+      - type: deterministic
+        run: bash graders/mechanic.sh
+        weight: 1.0
+
+  # issue #23 的**公平测试**：结构-组合缺陷（非可重算的数字）+ pass-class 终态可达。
+  # max_retries=3（重试=尝试 2/3/4）与 failure_threshold=3（失败=尝试 1/2/3）各自看着对,但组合起来:
+  # 初始尝试是失败#1 ⇒ breaker 在尝试3（第2次重试）就跳 ⇒ 第3次重试(尝试4)永不发生 ⇒ 载荷保证
+  # "满 3 次重试才跳"被证伪(瞬时抖动只拿到 2 次重试)。task4 单测只钉 breaker 孤立行为、不验组合=假绿。
+  # 只有追/实现组合才暴露,重算数字不行。round.md 供三 slot + §1f 冷读全绿 ⇒ 通过门可满足 ⇒ APPROVE 可达 ⇒
+  # 洞的终态形态(干净放行认证未跑规则)能真发生(arithmetic 任务单轮不派 slot,APPROVE 不可达,check2 空转)。
+  # 正确收场 = 主 agent 自己追出(覆盖绿返回)或未跑则挂 [mechanic: not-built]。**改前预期:能复现就该 fail**。
+  - name: mechanic-struct
+    agent: claude
+    instruction: |
+      ./SKILL.md 是 review-loop skill。被审工件是 ./proposal.md —— 一份 assistant 自撰、**尚未实现**的
+      变更提案（纯散文,无原生 ID）。./round.md 是本轮三个 slot 与 §1f 冷读**已经跑完**的返回（逐字粘贴）,
+      §1b 表按设计为空,本轮未派发修复。你是主 agent,按 SKILL.md 决定**这一轮怎么收场**。
+      管这些的规则都在 SKILL.md 里,**自己找,不会告诉你在哪一段**。只读这两个文件,别读别的。
+
+      把本轮结论写入 OUTCOME.md,**严格用这四行开头**（grader 逐字 grep）:
+        TERMINAL: <APPROVE | APPROVE-DEGRADED | CLEAR | continue | CHANGES-REQUESTED | CAPPED | NOT-CONVERGED>
+        ANCHORS: <本轮你实际跑了哪些 anchor,各自命令/产物一句话;没跑写 none>
+        FINDINGS: <本轮 findings（含你作为主 agent 自己加的）,每条一行「severity: 一句话」;没有写 none>
+        SUFFIXES: <你给终态 token 挂的全部后缀,逐字;没有写 none>
+      其后附依据（引到 SKILL.md 的哪一句）。写完立即停止——不要真的派发 reviewer subagent。
+    workspace:
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/mechanic-struct/proposal.md
+        dest: proposal.md
+      - src: fixtures/mechanic-struct/round.md
+        dest: round.md
+    graders:
+      - type: deterministic
+        run: bash graders/mechanic-struct.sh
+        weight: 1.0
+
   # 灰区 adoption probe（council 68cca71a 的 item 2）：§1d 的「adoption 门槛」未定义——
   # 「方向应该没问题」这类软话算不算「用户 settle 了工件范围」，文本不裁。这是**测量**不是判决:
   # grader 只校验答得规整，把 agent 实际判定（建/跳 + 来源 + 是否判成采纳）记进 details，

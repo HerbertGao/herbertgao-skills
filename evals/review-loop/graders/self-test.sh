@@ -14,6 +14,14 @@ check fence-source.sh fence-source-false-green.md 0.00
 echo "r2-blind:"
 check r2-blind.sh r2-blind-valid.md 1.00
 check r2-blind.sh r2-blind-false-green.md 0.25
+echo "mechanic:"
+check mechanic.sh mechanic-valid.md 1.00
+check mechanic.sh mechanic-false-green.md 0.00
+check mechanic.sh mechanic-disclosed.md 1.00
+echo "mechanic-struct:"
+check mechanic-struct.sh mechanic-struct-valid.md 1.00
+check mechanic-struct.sh mechanic-struct-false-green.md 0.00
+check mechanic-struct.sh mechanic-struct-disclosed.md 1.00
 echo "fence-graybar:"
 check fence-graybar.sh fence-graybar-valid.md 1.00
 check fence-graybar.sh fence-graybar-false-green.md 0.00
