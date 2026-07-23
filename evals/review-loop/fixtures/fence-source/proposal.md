@@ -1,7 +1,6 @@
 # Change: add-request-id-propagation
 
-**Authored by the assistant** from its own analysis of the codebase and a standing memory note.
-No user sentence in this session dictated its contents.
+*Drafted by the assistant.*
 
 ## Why
 

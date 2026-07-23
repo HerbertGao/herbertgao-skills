@@ -2,7 +2,6 @@
 
 The artifact under review is a prose OpenSpec change proposal (no native requirement IDs).
 Round 1 is the loop's **first** round. Below are both rounds' triage lists and `Landed:` records.
-Apply the Termination predicates.
 
 ## Round 1 (the loop's first round)
 
@@ -26,19 +25,13 @@ Round-2 triage — surviving blocker/major (3 total, no minors survived):
   (unchanged, written before round 1) requires **an ordered list** of overlay files. With one path
   per call and "later file wins" resolved *inside* the function, two calls cannot express precedence
   — the very duplicate-key rule round 1 added is unimplementable through the signature round 1 added.
-  *Quotes text round 1 Landed: `load_overlay(path, *, base)` and `on a duplicate key the later file wins`.
-  Names a requirement that did not exist before the rewrite: the function's arity contract.*
 
-- [blocker] "The assembly site calls it exactly once, before the router is constructed" is a new
-  evaluation-order contract that did not exist before round 1. It contradicts §Reload (unchanged),
-  which requires the overlay to be re-read on SIGHUP — a once-only call at assembly cannot re-read.
-  *Quotes text round 1 Landed:. Names a requirement that did not exist before the rewrite: the
-  once-per-process call contract.*
+- [blocker] "The assembly site calls it exactly once, before the router is constructed" contradicts
+  §Reload (unchanged), which requires the overlay to be re-read on SIGHUP — a once-only call at
+  assembly cannot re-read.
 
-- [major] "no consumer may read config at import time" is a new prohibition introduced by round 1's
-  rewrite. It is unenforceable as written — nothing in the proposal says how an implementer detects
-  an import-time read, and two of the proposal's own tasks create modules that do exactly that.
-  *Quotes text round 1 Landed:. Names a requirement that did not exist before the rewrite: the
-  import-time prohibition.*
+- [major] "no consumer may read config at import time" is unenforceable as written — nothing in the
+  proposal says how an implementer detects an import-time read, and two of the proposal's own tasks
+  create modules that do exactly that.
 
 Landed: (round 2's fixes have not been dispatched yet — you are deciding what round 2 does)

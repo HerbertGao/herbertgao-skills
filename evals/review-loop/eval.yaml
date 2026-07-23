@@ -87,15 +87,17 @@ tasks:
         run: bash graders/authority.sh
         weight: 1.0
 
-  # #22-3 探针 + §1d "Look before you skip" 落地（3d93a35）的首个覆盖：被审工件是 assistant 自撰、
-  # 边界只存在于它自己的 Non-goals 段。评分只取今天确定的三件（查过才准 skip / 无引句则 production /
-  # 跳过必付披露后缀）；raised vs skipped 本身不评分——那正是 #22-3 要问的歧义，答案进 details 当探针。
+  # #22-3 + §1d "Look before you skip"（3d93a35）与 named-artifact 子句自述范围（36dc495）的覆盖：
+  # 被审工件是 assistant 自撰、边界只存在于它自己的 Non-goals 段。四项计分：查过才准 skip /
+  # 无引句则 production / 跳过必付披露后缀 / 判决本身（ENDORSED 建、BARE 跳）。第四项在 36dc495
+  # 之前是探针——那时 raised·skipped 是真歧义，评它就是自己出题自己判卷；子句改完后规则确定，才升为门。
+  # fixture 已按评议会 e7c3f2c4 去泄题：删掉预先写好的判词，只留作者身份这个事实。
   - name: fence-source
     agent: claude
     instruction: |
-      ./SKILL.md 是 review-loop skill。读它的 `### 1d` 段（Raise the fence / Look before you skip /
-      Never ask for the form）、Canonical skip strings 表的 `Scope fence:` 行，以及
-      `Suffixes on every terminal token`。
+      ./SKILL.md 是 review-loop skill。你正按它跑一轮 review，现在要决定本轮的 scope fence 怎么处置——
+      建还是跳、边界文本从哪里来、终态挂什么后缀、delivery form 是什么。
+      管这些的规则都在 SKILL.md 里，**自己找，不会告诉你在哪一段**。
 
       被审工件是 ./proposal.md —— 一份**由 assistant 自撰**的变更提案，它自己带一个 Non-goals 段。
       本会话用户说过的话有两个互相独立的版本，各自是那个 case 的**完整**会话记录：
@@ -114,6 +116,9 @@ tasks:
         FORM: <production | prototype | demo>
       其后附你的依据（引到 SKILL.md 的哪一句）。写完立即停止——不要真的派发 reviewer、不要跑 review。
     workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
       - src: ../../skills/review-loop/SKILL.md
         dest: SKILL.md
       - src: fixtures/fence-source/proposal.md
@@ -133,18 +138,19 @@ tasks:
   - name: r2-blind
     agent: claude
     instruction: |
-      ./SKILL.md 是 review-loop skill。读顶部 Terms 的 `fix-induced blocker` 定义（含散文那两个条件）、
-      `## Termination` 的 `NOT-CONVERGED` 行与其下的根因步、converging-with-regressions 例外，
-      以及 Canonical skip strings 表的 `Regression:` 行。
-
-      ./rounds.md 是同一份纯散文提案连续两轮的 triage 与 Landed 记录，**round 1 是这个 loop 的第一轮**。
-      把 Termination 判据应用到 round 2，结论写入 OUTCOME.md，**严格用这四行开头**（grader 逐字 grep）：
+      ./SKILL.md 是 review-loop skill。./rounds.md 是同一份纯散文提案连续两轮的 triage 与 Landed 记录，
+      **round 1 是这个 loop 的第一轮**。你正按 SKILL.md 跑这个 loop，现在要决定 round 2 怎么收场。
+      管这件事的规则都在 SKILL.md 里，**自己找，不会告诉你在哪一段**。
+      结论写入 OUTCOME.md，**严格用这四行开头**（grader 逐字 grep）：
         R2-REGRESSION: <N of M>
         R2-ROOT-CAUSE-DISPATCHED: <yes | no>
         R2-TERMINAL: <continue | NOT-CONVERGED | CAPPED | APPROVE | APPROVE-DEGRADED>
         EARLIEST-NOT-CONVERGED-ROUND: <这个 loop 最早可能写出 NOT-CONVERGED 的轮号>
       其后附推理。写完立即停止——不要真的跑任何 review。
     workspace:
+      - src: bin/run-codex.sh
+        dest: bin/run-codex.sh
+        chmod: "+x"
       - src: ../../skills/review-loop/SKILL.md
         dest: SKILL.md
       - src: fixtures/r2-blind/rounds.md
