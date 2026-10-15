@@ -79,6 +79,8 @@ In the initial round, the main agent may add zero or multiple Agency Agents spec
 3. Select none or several qualifying roles as useful; do not enumerate every possible match or keep a rejected-candidate ledger. Avoid duplicate personas unless their core missions are materially distinct and each covers a different named gap.
 4. Missing catalog, an unreadable persona, or no useful exact role means no expert; CR and RC still run. Never install or modify the catalog during the loop.
 
+If `agency_search` and `agency_dispatch` are available, use them for catalog experts only and do not list the catalog or open a persona file. CR and RC stay on the role text in this skill. One search query per touchpoint. Dispatch the selected experts in one call. Each prompt contains `{{persona}}` once, inside `<persona>` tags, and `{{shared}}` once with the review target and the rules. Pass the card's catalog path as the persona. If an expert cannot be searched or dispatched, continue without that expert. A later catalog expert uses the same tools and is still not read from disk. No extra record is required. If those tools are absent, this paragraph does not apply.
+
 Selected experts run in the initial round and add findings only. They do not replace CR or RC, decide the terminal result, or rerun by default. Their findings close through normal triage, fix/check, and later CR+RC review. The separately triggered root-cause expert is the only later review-expert route; specialized fix delegation remains allowed when it is cheaper.
 
 Catalog, model-family diversity, and structural isolation improve confidence but never decide whether a lane may run.

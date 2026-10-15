@@ -19,6 +19,8 @@ If a draft exists and the question is keep, replace, or combine, follow referenc
 
 Seat a few catalog specialists who actually conflict, including one who should attack the likely choice. Search only enough to name them. Do not paste the catalog, and do not stop to prove the search. If someone cannot be seated, continue with the people you have.
 
+If `agency_search` and `agency_dispatch` are available, use them for every seat and do not list the catalog or open a persona file. One search query per disagreement is enough. Dispatch the seats in one call. Each prompt contains `{{persona}}` once, inside `<persona>` tags, and `{{shared}}` once with the question and the facts they need. Pass the card's catalog path as the persona. If a seat cannot be searched or dispatched, continue without it. No extra record is required. If those tools are absent, the paragraph above is unchanged.
+
 Get each position before you synthesize: a claim, why, and what would change their mind. Then argue the disagreement. Check a fact when you can. Ask the human only when their preference would flip the choice. If they do not answer, choose and say what you assumed.
 
 Agreement is not independent evidence. The seats may be the same model in different roles. If they agree, say so and still give the conclusion.
