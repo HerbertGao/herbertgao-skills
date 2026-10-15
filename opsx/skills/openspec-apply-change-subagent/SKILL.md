@@ -1,6 +1,6 @@
 ---
 name: openspec-apply-change-subagent
-description: 以编排模式实现 OpenSpec 变更——主 agent 把任务按范围分组、每组派 subagent 开发、自己只做状态管理与 review。当用户想用 subagent 分组方式开始/继续实现任务时使用。这是 openspec-apply-change 的并存定制版，不覆盖原 skill。需要 openspec-cn CLI（对齐 1.6.0）与 git（review 的地面真相来自它）。
+description: 以编排模式实现 OpenSpec 变更——主 agent 把任务按范围分组、每组派 subagent 开发、自己只做状态管理与 review。当用户想用 subagent 分组方式开始/继续实现任务时使用。这是 openspec-apply-change 的并存定制版，不覆盖原 skill。需要 openspec-cn CLI（对齐 1.6.0）与 git（review 的地面真相来自它）。平台中立版：实现专家先读 catalog 再解析（读不到即停机），不依赖任何宿主专属的 subagent API。
 ---
 
 实现 OpenSpec 变更中的任务。
@@ -100,9 +100,9 @@ BASE=$(snap)                                       # 波首
 - 任一组校验或 review 不通过 ⇒ **停止派发后续波次**，按步骤 8 暂停。
 - 重复直到所有组都**通过 review**，或中途暂停。
 
-**每组先解析一位实现专家**（见「实现专家与解析梯」），再派发：**registered 的角色直接按其名字派原生 subagent；未注册的**才以 `subagent_type: general-purpose` 派发、把其正文作为 persona 注入。**一组一 subagent、一组一返回。**
+**每组先解析一位实现专家**（见「实现专家与解析梯」），再派发：**registered 的角色直接派原生 subagent；未注册的**才以平台的 generic subagent 机制注入 persona（Claude Code → `general-purpose`；有默认 worker 的平台 → persona 作其指令；只有具名 subagent 的平台 → 开干净隔离任务注入）。**一组一 subagent、一组一返回。**
 
-*（Claude Code 的 `Agent` 工具带 `isolation: "worktree"`——**只在上述预检通过后给并行组用它**：每个 worker 拿到独立的 git worktree，每组的 diff 天然可归因，「写集归因」从「够用」升级为「严密」，而且不需要基线相减。部分创建失败时按 guardrail 保留并验收成功 worker 的树，只披露并串行重派失败组。）*
+
 
 **每个 subagent 的 prompt 必须包含：**
 
@@ -226,7 +226,7 @@ openspec-cn validate "<name>" --strict     # 只校验规格 markdown
 **先读 catalog，再解析角色。** 这条梯子上只有「读文件」这一步有可证伪的凭据：文件要么在那个路径上，要么不在，工具记录说了算。而「宿主已注册这个类型」是一句话，一句话写下来不费任何力气——把它放在前面，下面那个停机就成了一个 agent 光靠说就能绕过、全程不碰文件系统的停机。
 
 1. **解析** —— 取上表的源路径，在 `~/.agency-agents/`（一个 catalog 的 git clone，嵌套两层）下读；校验 frontmatter `name:` 等于该角色名。**注意：catalog 文件的 frontmatter `name:` 是显示名（`Frontend Developer`），不是文件名 slug（`engineering-frontend-developer`）——按错的那个查，永远读不到。** 文件不在 ⇒ 该角色**解析不出**。
-2. **派发** —— 文件在，角色就是真的。它的 `name:` 恰好也是宿主已注册的 subagent 类型 ⇒ 直接派原生 subagent，回显 `[registered]`（**最强档：persona 与工具范围由宿主自己管**）；否则把正文（跳过 frontmatter）作 persona 注入 `general-purpose`，回显 `[local: <源路径>]`。**回显带上路径**——`<组>/<角色>：[local: <源路径>]`——让档位成为可被证伪的声明。
+2. **派发** —— 文件在，角色就是真的。它的 `name:` 恰好也是宿主已注册的 subagent 类型 ⇒ 直接派原生 subagent，回显 `[registered]`（**最强档：persona 与工具范围由宿主自己管**）；否则把正文（跳过 frontmatter）作 persona 注入 generic subagent，回显 `[local: <源路径>]`。**回显带上路径**——`<组>/<角色>：[local: <源路径>]`——让档位成为可被证伪的声明。
 
 **解析不出 ⇒ 停机**：输出「缺前置：<角色> 在 ~/.agency-agents 的 <源路径> 读不到——安装见 README」，本轮不派该组、不造替身专家。装 catalog 是用户的事；一个两行 persona 的替身写出的实现，review 无从对照真专家的产出。
 
@@ -296,11 +296,11 @@ openspec-cn validate --strict ✓ · pnpm test ✓ · mvn -q test ✓
 您想怎么做？
 ```
 
-## Claude Code 机制
+## 平台规则
 
-- 并行派发：**在同一条消息里发出多个 `Agent` 调用**；写集不相交且依赖就绪的组才进同一波。
-- 只有步骤 5 的 worktree guardrail 预检通过，才给并行组加 `isolation: "worktree"`；部分失败时保留成功 worker 的树逐组验收，只把失败组按依赖顺序无隔离串行重派。
-- 实现 subagent 用 `general-purpose`（它需要 Write / Edit / Bash）。
+- 派发的平台映射以步骤 5 的解析梯为准——落到哪个宿主，就用那个宿主自己的派发语法实现同一形状。
+- 不使用 `codex:codex-rescue`（它是 Claude 托管的桥，不是独立 agent）。
+- 运行时支持并行且步骤 5 的 worktree guardrail 已通过 ⇒ 写集不相交且依赖就绪的组并行派发；否则按依赖顺序分波串行。
 
 ## 护栏（压缩的契约索引，每条指回其步骤；「围栏」专指步骤 6 的 git 基线闸，是护栏之一）
 

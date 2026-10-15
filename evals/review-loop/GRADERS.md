@@ -1,20 +1,16 @@
 # review-loop grader 判据
 
-当前通用/Claude 两版共享精简核心；Claude 仅额外保留可选 Codex rescue adapter。
 改 grader 前先跑 `graders/self-test.sh`：每个确定性 grader 必须通过 valid fixture，并抓住
 false-green fixture。
 
 ## 保留的行为面
 
-- `portable-routing`：无 sandbox、catalog、canonical return 或原生 subagent 时不再启动失败；按
-  `registered → local → embedded → same-context` 降级，原文优先、摘要兜底。OpenSpec 在伞仓而代码在
-  独立子仓时分别记录 artifact / implementation root，不为 review 创建伞仓 worktree。
 - `expert-selection`：CR+RC 固定；具体技术/平台/监管领域明确时，可选 0..N 个高度对口专家，
   无席位上限。测试只验证 eligibility 与合法选择，**不把可选专家改成默认必派**。
-- `root-cause-escalation`：同一 semantic blocker 连续两轮后只升级一次；不同 causal chain 即使
-  同症状也不合并；无可应用方案、方案无法应用/检查，或应用后复审仍失败时 `NOT-CONVERGED`；无全局预算。
 - `knob-yagni`：守卫反复加固时仍能质疑并删除只为守卫存在的自由度。
-- `output-retention`：在默认固定的 `openai-codex/gpt-5.4-mini:low` 上检查开放式/概率性输出是否保留可恢复核心内容、拒绝无依据的新门禁、把连续软 guard 送入根因路径并保留有独立消费者/schema 依据的硬 guard；可用 `PI_EVAL_*` 覆盖模型档。grader 按唯一标签提取语义决策，不要求固定顺序或禁止额外解释；专用 runner 在模型未写文件时把非空 stdout 作为候选结果保留。它是行为回归，不证明这些规则对模型具有必要因果作用，也不代表所有弱模型。
+- `portable-routing`：缺 catalog 或 sandbox 不阻断；不记录路由档；不为 review 请求 worktree；工人读不到文件时用绝对路径。
+- `root-cause-escalation`：同一 blocker 连续两轮才请一个新人修一次；越界走 `OUT-OF-SCOPE-PENDING`；升级失败才 `NOT-CONVERGED`。没有 latch。
+- `output-retention`：可恢复内容要保留；连续加门不再自动升级为根因。
 - `premise-cite`：未实现提案对既有状态的断言仍须由现有代码/契约证实。
 - `redactor-self-test`：bundled redactor 仍作为可选工具随包提供，保留运行时回归；它不再是
   review-loop 的通过前置。

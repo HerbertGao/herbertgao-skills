@@ -12,12 +12,12 @@
     {
       "name": "review-loop",
       "source": "./review-loop",
-      "description": "Portable adversarial review loop for Claude Code: Code Reviewer + Reality Checker are always required; the initial round may add zero or multiple highly relevant Agency Agents domain experts, with no seat cap. It merges findings, applies the smallest accepted fixes, checks and re-reviews them, and gives a repeated blocker one fresh root-cause escalation before NOT-CONVERGED. Missing catalog or structural isolation never blocks the loop; Claude may optionally add a review-only Codex rescue pass. Architecture selection belongs to council."
+      "description": "Portable adversarial review loop: Code Reviewer and Reality Checker are always required; the initial round may add zero or multiple relevant domain experts, with no seat cap. It merges findings, applies the smallest accepted fixes, and re-reviews. A repeated blocker gets one fresh escalation before NOT-CONVERGED. Missing catalog or isolation never blocks the loop. Architecture selection belongs to council."
     },
     {
       "name": "council",
       "source": "./council",
-      "description": "Multi-perspective council for one open decision, including architecture selection when a draft already exists and the goal is to choose rather than edit. It records four named first positions before synthesis and compares challengers under a neutral brief; missing isolation lowers assurance instead of blocking the debate. Canonical records may reach CONVERGED; weaker hosts return unaudited, non-authorizing ADVISORY. Use review-loop to find and fix artifact defects to APPROVE. Requires ~/.agency-agents."
+      "description": "Multi-perspective council for one open decision, including whether to keep, replace, or combine an existing draft. It hears conflicting positions before synthesis and ends with a feasible conclusion. The result does not certify the debate. Use review-loop to find and fix defects."
     },
     {
       "name": "opsx",

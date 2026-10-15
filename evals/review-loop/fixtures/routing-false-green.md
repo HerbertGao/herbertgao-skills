@@ -1,7 +1,7 @@
-CASE-A: CR=PREREQUISITE-MISSING, RC=PREREQUISITE-MISSING, terminal-blocked=yes, return=original
-CASE-B: CR=PREREQUISITE-MISSING, RC=PREREQUISITE-MISSING, terminal-blocked=yes, return=unavailable
-CASE-C: CR=halt, RC=halt, terminal-blocked=yes, return=original
-CASE-D: CR=not-run, RC=not-run, terminal-blocked=yes, return=unavailable
-CASE-E: artifact-root=umbrella, implementation-root=umbrella, worktree=umbrella, access=missing
+CASE-A: blocked=no, route-recorded=registered, return=full
+CASE-B: blocked=yes, route-recorded=local, return=unavailable
+CASE-C: blocked=yes, route-recorded=embedded, catalog=halt
+CASE-D: blocked=yes, route-recorded=same-context, passes=not-run
+CASE-E: blocked=yes, worktree=requested, access=missing
 CATALOG-MISSING: halt
 SANDBOX-MISSING: halt

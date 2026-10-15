@@ -14,14 +14,20 @@ add() {
 	printf '%s\t%s\n' "$name" "$passed" >>"$checks"
 }
 exact_prefix() {
-	local expected=$1 n=0 want got
+	local expected=$1 n=0 want got label matches total
 	while IFS= read -r want; do
 		n=$((n + 1))
 		got=$(sed -n "${n}p" "$outcome" 2>/dev/null || true)
 		if [ "$got" = "$want" ]; then add "line-$n" true; else add "line-$n" false; fi
+		label=${want%%:*}
+		matches=$(grep -cE "^[[:space:]]*${label}:" "$outcome" 2>/dev/null || true)
+		if [ "$matches" = 1 ]; then add "unique-$label" true; else add "unique-$label" false; fi
 	done <<EOF
 $expected
 EOF
+	total=$(grep -cve '^[[:space:]]*$' "$outcome" 2>/dev/null || true)
+	total=${total:-0}
+	if [ "$total" = "$n" ]; then add exact-lines true; else add exact-lines false; fi
 }
 exact_fields() {
 	local expected=$1 label matches got
@@ -42,11 +48,11 @@ case "$mode" in
 routing)
 	exact_prefix "$(
 		cat <<'EOF'
-CASE-A: CR=registered, RC=registered, terminal-blocked=no, return=original
-CASE-B: CR=local, RC=local, terminal-blocked=no, return=summarized
-CASE-C: CR=embedded, RC=embedded, terminal-blocked=no, return=original
-CASE-D: CR=same-context, RC=same-context, terminal-blocked=no, return=summarized
-CASE-E: artifact-root=umbrella, implementation-root=nested-repo, worktree=not-used, access=absolute-path
+CASE-A: blocked=no, route-recorded=no, return=full
+CASE-B: blocked=no, route-recorded=no, return=summary-ok
+CASE-C: blocked=no, route-recorded=no, catalog=continue
+CASE-D: blocked=no, route-recorded=no, passes=sequential-withheld
+CASE-E: blocked=no, worktree=not-requested, access=absolute-path
 CATALOG-MISSING: continue
 SANDBOX-MISSING: continue
 EOF
@@ -67,19 +73,17 @@ experts)
 	if [ "$authority" = 'EXPERT-AUTHORITY: findings-only' ]; then add authority true; else add authority false; fi
 	unique=true
 	for label in ELIGIBLE INELIGIBLE VALID-SELECTIONS EXPERT-SEAT-CAP CATALOG-MISSING EXPERT-AUTHORITY; do
-		[ "$(grep -cE "^${label}:" "$outcome" 2>/dev/null || true)" = 1 ] || unique=false
+		[ "$(grep -cE "^[[:space:]]*${label}:" "$outcome" 2>/dev/null || true)" = 1 ] || unique=false
 	done
 	add unique-fields "$unique"
 	;;
 root-cause)
 	exact_prefix "$(
 		cat <<'EOF'
-CASE-A-IDENTITY: same blocker
-CASE-A-ACTION: dispatch one new root-cause expert
+CASE-A-ACTION: one-fresh-person
 CASE-A-TERMINAL: continue
 CASE-B-TERMINAL: NOT-CONVERGED
-CASE-C-IDENTITY: distinct blocker
-CASE-C-ROOT-CAUSE-LATCH: unused
+CASE-C-ACTION: no-escalation
 CASE-D-TERMINAL: NOT-CONVERGED
 CASE-E-TERMINAL: OUT-OF-SCOPE-PENDING
 GLOBAL-BUDGET: none
@@ -94,8 +98,8 @@ B: normalize
 C: stop
 D: stop
 R4: waive
-SOFT-CHAIN: merge
-SOFT-ACTION: root-cause
+SOFT-CHAIN: not-merged
+SOFT-ACTION: no-escalation
 HARD-GUARD: keep
 PATCH: simplify
 EOF

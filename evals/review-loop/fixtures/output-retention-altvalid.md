@@ -4,10 +4,10 @@ The usable core survives optional metadata loss; the existing consumer boundary 
 
 PATCH: simplify
 B: normalize
-SOFT-ACTION: root-cause
+SOFT-ACTION: no-escalation
 A: forward
 R4: waive
 D: stop
 HARD-GUARD: keep
 C: stop
-SOFT-CHAIN: merge
+SOFT-CHAIN: not-merged

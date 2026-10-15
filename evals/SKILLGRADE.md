@@ -16,13 +16,13 @@ cd evals/council
 npx skillgrade
 
 # 运行单个 eval task
-npx skillgrade --eval=advisory-routing
+npx skillgrade --eval=incumbent-routing
 
 # 快速冒烟（1 trial）
-npx skillgrade --eval=advisory-routing --trials=1
+npx skillgrade --eval=incumbent-routing --trials=1
 
 # CI 模式：低于 threshold 非零退出
-npx skillgrade --eval=advisory-routing --ci --threshold=1.0
+npx skillgrade --eval=incumbent-routing --ci --threshold=1.0
 ```
 
 ## Agent 选择
@@ -41,19 +41,19 @@ npx skillgrade --eval=advisory-routing --ci --threshold=1.0
 
 ```bash
 # Codex（该 task 的默认宿主）
-npx skillgrade --eval=advisory-routing --trials=1 --provider=local
+npx skillgrade --eval=incumbent-routing --trials=1 --provider=local
 
 # Pi（可覆盖任意 task；从当前 Pi 配置读取认证和默认模型）
-npx skillgrade --eval=advisory-routing --trials=1 --provider=local \
+npx skillgrade --eval=incumbent-routing --trials=1 --provider=local \
   --agent=command --command="bash bin/run-pi.sh"
 
 # 可选：固定 Pi provider / model / thinking，便于复现实验
 PI_EVAL_PROVIDER=openai PI_EVAL_MODEL=gpt-5.4 PI_EVAL_THINKING=high \
-  npx skillgrade --eval=advisory-routing --trials=1 --provider=local \
+  npx skillgrade --eval=incumbent-routing --trials=1 --provider=local \
   --agent=command --command="bash bin/run-pi.sh"
 
 # Claude 只保留为有可用账号时的兼容性复测，不属于默认矩阵
-npx skillgrade --eval=advisory-routing --trials=1 --provider=local \
+npx skillgrade --eval=incumbent-routing --trials=1 --provider=local \
   --agent=claude
 
 # trae-cli（不兼容写文件型 eval）
@@ -68,7 +68,7 @@ PROMPT=$(cat)
 exec agy --prompt "$PROMPT" --dangerously-skip-permissions
 EOF
 chmod +x /tmp/agy-skillgrade.sh
-npx skillgrade --eval=advisory-routing --trials=1 --provider=local \
+npx skillgrade --eval=incumbent-routing --trials=1 --provider=local \
   --agent=command --command="/tmp/agy-skillgrade.sh"
 ```
 
@@ -77,7 +77,7 @@ npx skillgrade --eval=advisory-routing --trials=1 --provider=local \
 每个 `evals/<skill>/` 目录：
 
 - `eval.yaml` — eval 配置（task 定义、workspace 文件映射、grader）
-- `fixtures/` — 输入文件（SKILL.md、host-profiles.md、decision.md 等）
+- `fixtures/` — 输入文件（SKILL.md、场景和被审样本）
 - `graders/` — 评分脚本（bash，输出 JSON）
 - `bin/run-codex.sh` — Codex 启动脚本（做 HOME 隔离）
 - `bin/run-pi.sh` — Pi 启动脚本（保留认证，隔离 HOME，并禁用外部资源）
@@ -86,8 +86,8 @@ npx skillgrade --eval=advisory-routing --trials=1 --provider=local \
 
 各 skill 的任务以自己的 `eval.yaml` 为准：
 
-- **review-loop**：`portable-routing`（四级宿主 fallback）、`expert-selection`（CR+RC + 可选 0..N 精确领域专家）、`root-cause-escalation`（同一 blocker 的一次根因升级），以及 `knob-yagni` / `output-retention`/ `premise-cite` 缺陷发现回归。Bundled redactor 另有 runtime self-test，但不再是 review-loop 的通过前置。
-- **council**：`prereq-halt`、`unfollowable-floor`、`advisory-routing`、`advisory-debate-shape`、`incumbent-routing`、`incumbent-decision`、`trust-execution-boundary`。
+- **review-loop**：`expert-selection`、`knob-yagni`、`premise-cite`、`portable-routing`、`root-cause-escalation`、`output-retention`。路由档和记录表不再是被测行为。Bundled redactor 另有 runtime self-test，但不再是通过前置。
+- **council**：`unfollowable-floor`、`incumbent-routing`、`trust-execution-boundary`。保证 mode 和组席停机报表已从通用版删除。
 - **opsx**：分组、前置、reconcile、checkbox 定位与 snapshot 回归。
 
 review-loop 旧三席、strong-anchor、cold-reader/simplicity 常驻 lane、confidentiality hard-stop 与 16 条 completion predicate 任务已随重协议废弃；删除原因见 `evals/review-loop/GRADERS.md`。
@@ -98,10 +98,10 @@ grader 是确定性 bash 脚本：协议题逐行精确核对，效果题核对�
 
 ```bash
 # 用 valid fixture 验证 grader 能正确通过
-OUTCOME_FILE=fixtures/advisory-routing-valid.md bash graders/advisory-routing.sh
+OUTCOME_FILE=fixtures/incumbent-routing-valid.md bash graders/incumbent-routing.sh
 
 # 用 false-green fixture 验证 grader 能抓住错误答案
-OUTCOME_FILE=fixtures/advisory-routing-false-green.md bash graders/advisory-routing.sh
+OUTCOME_FILE=fixtures/incumbent-routing-false-green.md bash graders/incumbent-routing.sh
 ```
 
 ## 结果
@@ -120,5 +120,5 @@ ls -t $TMPDIR/skillgrade/council/results/*.json | head -1 | xargs cat | python3 
 - Codex agent 需要认证（`CODEX_HOME` 默认 `~/.codex`）
 - Pi agent 需要在 `PI_CODING_AGENT_DIR`（默认 `~/.pi/agent`）中已有认证；wrapper 默认使用 `high` thinking，并禁用 context、extensions、skills 与 prompt templates，避免用户配置污染 eval
 - Claude 不再是默认测试依赖；仅在显式兼容性复测时需要认证
-- `advisory-routing`、`advisory-debate-shape`、`incumbent-routing` 与 `incumbent-decision` 都使用 `threshold: 1.0`，协议字段必须全对
+- `incumbent-routing` 与 `trust-execution-boundary` 使用 `threshold: 1.0`，协议字段必须全对
 - Codex 在开发过程中可能频繁修改 SKILL.md 和 eval 文件；跑 eval 前确认 working tree 是预期状态

@@ -111,6 +111,20 @@ for mode in routing experts root-cause; do
 	check "graders/protocol.sh $mode" "$mode-valid.md" 1.00
 	check "graders/protocol.sh $mode" "$mode-false-green.md" 0.00
 done
+for mode in routing root-cause; do
+	tmp=$(mktemp "${TMPDIR:-/tmp}/review-prefix-extra.XXXXXX")
+	cat "fixtures/${mode}-valid.md" >"$tmp"
+	printf 'CATALOG-MISSING: halt\n' >>"$tmp"
+	got=$(OUTCOME_FILE="$tmp" bash graders/protocol.sh "$mode" |
+		python3 -c 'import json,sys; print("{:.2f}".format(json.load(sys.stdin)["score"]))')
+	rm -f "$tmp"
+	if [ "$got" = 0.00 ]; then
+		printf '  ok   %s rejects a valid prefix plus a contradictory extra line\n' "$mode"
+	else
+		printf '  FAIL %s accepted a contradictory extra line (%s)\n' "$mode" "$got"
+		fail=1
+	fi
+done
 check 'graders/protocol.sh output-retention' output-retention-valid.md 1.00
 check 'graders/protocol.sh output-retention' output-retention-altvalid.md 1.00
 for line in {1..9}; do mutation_check "$line"; done
@@ -120,6 +134,24 @@ check 'graders/protocol.sh experts' experts-selection-false-green.md 0.00
 check 'graders/protocol.sh experts' experts-exclusion-false-green.md 0.00
 check 'graders/protocol.sh experts' experts-negated-false-green.md 0.00
 check 'graders/protocol.sh experts' experts-duplicate-false-green.md 0.00
+indented_duplicate() {
+	local grader=$1 fixture=$2 line=$3 tmp got
+	tmp=$(mktemp "${TMPDIR:-/tmp}/review-indented-duplicate.XXXXXX")
+	cat "fixtures/$fixture" >"$tmp"
+	printf ' %s\n' "$line" >>"$tmp"
+	got=$(OUTCOME_FILE="$tmp" bash $grader |
+		python3 -c 'import json,sys; print("{:.2f}".format(json.load(sys.stdin)["score"]))')
+	rm -f "$tmp"
+	if [ "$got" = 0.00 ]; then
+		printf '  ok   %s rejects an indented duplicate\n' "$grader"
+	else
+		printf '  FAIL %s accepted an indented duplicate (%s)\n' "$grader" "$got"
+		fail=1
+	fi
+}
+indented_duplicate 'graders/protocol.sh experts' experts-valid.md 'CATALOG-MISSING: halt'
+indented_duplicate graders/knob-yagni.sh knob-yagni-valid.md 'BLOCKERS: 0'
+indented_duplicate graders/premise-cite.sh premise-cite-valid.md 'BLOCKERS: 0'
 check graders/knob-yagni.sh knob-yagni-valid.md 1.00
 check graders/knob-yagni.sh knob-yagni-altvalid.md 1.00
 check graders/knob-yagni.sh knob-yagni-false-green.md 0.00

@@ -14,31 +14,6 @@ defaults:
   threshold: 1.0
 
 tasks:
-  - name: portable-routing
-    instruction: |
-      Read ./SKILL.md and apply only its Portable execution, Return handling, and Establish
-      the review target rules to ./scenario.md. This is a classification exercise: do not dispatch reviewers. Write
-      OUTCOME.md with exactly these seven lines first, replacing the angle-bracket choices:
-        CASE-A: CR=<registered|local|embedded|same-context>, RC=<same choices>, terminal-blocked=<yes|no>, return=<original|summarized|unavailable>
-        CASE-B: CR=<route>, RC=<route>, terminal-blocked=<yes|no>, return=<shape>
-        CASE-C: CR=<route>, RC=<route>, terminal-blocked=<yes|no>, return=<shape>
-        CASE-D: CR=<route>, RC=<route>, terminal-blocked=<yes|no>, return=<shape>
-        CASE-E: artifact-root=<umbrella|nested-repo>, implementation-root=<umbrella|nested-repo>, worktree=<not-used|umbrella>, access=<absolute-path|missing>
-        CATALOG-MISSING: <continue|halt>
-        SANDBOX-MISSING: <continue|halt>
-      For CASE-A through CASE-D, output only route class names; normalize any
-      `[local: <catalog path>]` route to `local`. You may add reasoning after those lines. Do not read graders/, tests/, prompts/, or bin/.
-    workspace:
-      - src: bin
-        dest: bin
-      - src: ../../skills/review-loop/SKILL.md
-        dest: SKILL.md
-      - src: fixtures/portable-routing-scenario.md
-        dest: scenario.md
-    graders:
-      - type: deterministic
-        run: bash graders/protocol.sh routing
-        weight: 1.0
 
   - name: expert-selection
     agent: command
@@ -64,33 +39,6 @@ tasks:
     graders:
       - type: deterministic
         run: bash graders/protocol.sh experts
-        weight: 1.0
-
-  - name: root-cause-escalation
-    instruction: |
-      Read ./SKILL.md and apply only its Repeat-blocker root cause and Terminal results rules
-      to ./scenario.md. This is a classification exercise: do not dispatch reviewers or edit
-      the scenario. Write OUTCOME.md with exactly these nine lines first:
-        CASE-A-IDENTITY: <same blocker|distinct blocker>
-        CASE-A-ACTION: <dispatch one new root-cause expert|continue ordinary fixes forever|stop>
-        CASE-A-TERMINAL: <continue|NOT-CONVERGED>
-        CASE-B-TERMINAL: <NOT-CONVERGED|dispatch another expert|continue>
-        CASE-C-IDENTITY: <same blocker|distinct blocker>
-        CASE-C-ROOT-CAUSE-LATCH: <used|unused>
-        CASE-D-TERMINAL: <NOT-CONVERGED|continue ordinary fixes forever|dispatch another expert>
-        CASE-E-TERMINAL: <OUT-OF-SCOPE-PENDING|NOT-CONVERGED|continue>
-        GLOBAL-BUDGET: <none|number of rounds>
-      You may add reasoning after those lines. Do not read graders/, tests/, prompts/, or bin/.
-    workspace:
-      - src: bin
-        dest: bin
-      - src: ../../skills/review-loop/SKILL.md
-        dest: SKILL.md
-      - src: fixtures/root-cause-scenario.md
-        dest: scenario.md
-    graders:
-      - type: deterministic
-        run: bash graders/protocol.sh root-cause
         weight: 1.0
 
   - name: knob-yagni
@@ -137,42 +85,6 @@ tasks:
         run: bash graders/knob-yagni.sh
         weight: 1.0
 
-  - name: output-retention
-    agent: command
-    command: bash bin/run-pi-output-retention.sh
-    instruction: |
-      ./SKILL.md is review-loop. Read ./contract.md, ./scenario.md, and
-      ./src/consumer.ts, then apply the Skill's Reality Checker, governing-requirement,
-      Triage, and repeated-blocker rules. This is a classification exercise: do not
-      dispatch reviewers or edit the inputs.
-
-      Include each of these nine labeled decisions exactly once. Their order and any surrounding reasoning are free:
-        A: <forward|normalize|stop>
-        B: <forward|normalize|stop>
-        C: <forward|normalize|stop>
-        D: <forward|normalize|stop>
-        R4: <apply|waive|defer>
-        SOFT-CHAIN: <merge|split>
-        SOFT-ACTION: <root-cause|ordinary|stop>
-        HARD-GUARD: <keep|remove>
-        PATCH: <simplify|append>
-      You may add reasoning after those lines. Do not read graders/, tests/, prompts/, or bin/.
-    workspace:
-      - src: bin
-        dest: bin
-      - src: ../../skills/review-loop/SKILL.md
-        dest: SKILL.md
-      - src: fixtures/output-retention-contract.md
-        dest: contract.md
-      - src: fixtures/output-retention-scenario.md
-        dest: scenario.md
-      - src: fixtures/output-retention-consumer.ts
-        dest: src/consumer.ts
-    graders:
-      - type: deterministic
-        run: bash graders/protocol.sh output-retention
-        weight: 1.0
-
   - name: premise-cite
     agent: command
     command: bash bin/run-pi.sh
@@ -202,4 +114,83 @@ tasks:
     graders:
       - type: deterministic
         run: bash graders/premise-cite.sh
+        weight: 1.0
+
+  - name: portable-routing
+    instruction: |
+      Read ./SKILL.md and apply its current execution rules to ./scenario.md.
+      Do not dispatch reviewers. Do not classify a route tier.
+      Write OUTCOME.md with exactly these lines and no others:
+        CASE-A: blocked=<yes|no>, route-recorded=<no|yes>, return=<full|summary-ok>
+        CASE-B: blocked=<yes|no>, route-recorded=<no|yes>, return=<full|summary-ok|unavailable>
+        CASE-C: blocked=<yes|no>, route-recorded=<no|yes>, catalog=<continue|halt>
+        CASE-D: blocked=<yes|no>, route-recorded=<no|yes>, passes=<sequential-withheld|not-run>
+        CASE-E: blocked=<yes|no>, worktree=<not-requested|requested>, access=<absolute-path|missing>
+        CATALOG-MISSING: <continue|halt>
+        SANDBOX-MISSING: <continue|halt>
+    workspace:
+      - src: bin
+        dest: bin
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/portable-routing-scenario.md
+        dest: scenario.md
+    graders:
+      - type: deterministic
+        run: bash graders/protocol.sh routing
+        weight: 1.0
+
+  - name: root-cause-escalation
+    instruction: |
+      Read ./SKILL.md and apply only its current repeat-blocker rule and terminal results
+      to ./scenario.md. Do not dispatch reviewers.
+      Write OUTCOME.md with exactly these lines and no others:
+        CASE-A-ACTION: <one-fresh-person|keep-patching>
+        CASE-A-TERMINAL: <continue|NOT-CONVERGED>
+        CASE-B-TERMINAL: <NOT-CONVERGED|dispatch-another>
+        CASE-C-ACTION: <no-escalation|one-fresh-person>
+        CASE-D-TERMINAL: <NOT-CONVERGED|keep-patching>
+        CASE-E-TERMINAL: <OUT-OF-SCOPE-PENDING|NOT-CONVERGED>
+        GLOBAL-BUDGET: <none|3>
+    workspace:
+      - src: bin
+        dest: bin
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/root-cause-scenario.md
+        dest: scenario.md
+    graders:
+      - type: deterministic
+        run: bash graders/protocol.sh root-cause
+        weight: 1.0
+
+  - name: output-retention
+    instruction: |
+      Read ./SKILL.md and apply its current Reality Checker output rules and the
+      rejection-gate rule to ./scenario.md. Consecutive extra gates are not automatically
+      one root-cause escalation.
+      Write OUTCOME.md with these labels, one per line. Extra explanation is allowed:
+        A: <forward|stop>
+        B: <normalize|stop>
+        C: <forward|stop>
+        D: <forward|stop>
+        R4: <waive|require>
+        SOFT-CHAIN: <not-merged|merge>
+        SOFT-ACTION: <no-escalation|root-cause>
+        HARD-GUARD: <keep|drop>
+        PATCH: <simplify|add-gate>
+    workspace:
+      - src: bin
+        dest: bin
+      - src: ../../skills/review-loop/SKILL.md
+        dest: SKILL.md
+      - src: fixtures/output-retention-scenario.md
+        dest: scenario.md
+      - src: fixtures/output-retention-contract.md
+        dest: contract.md
+      - src: fixtures/output-retention-consumer.ts
+        dest: src/consumer.ts
+    graders:
+      - type: deterministic
+        run: bash graders/protocol.sh output-retention
         weight: 1.0

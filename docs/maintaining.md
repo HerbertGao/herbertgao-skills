@@ -25,14 +25,14 @@ herbertgao-skills/
 ## 哪份是权威(SOT)
 
 - `skills/<skill>/SKILL.md` 是平台中立的通用版 SOT，通过 `npx skills add` 分发。
-- `<plugin>/` 下的 Claude 版通常是手工维护的平行副本；其中 review-loop 被机械限制为“通用正文 + 唯一 canonical Claude adapter”，council / opsx 保留宿主耦合，host-neutral 的 eli5 则必须与通用版字节一致。
+- `<plugin>/` 下的 Claude `SKILL.md` 必须与 `skills/<skill>/SKILL.md` 字节一致。宿主专用分支不再保留。
 - `required_verbatim` 只机械守住 evaluator 会匹配的关键字面量，其余语义仍需人工 review。
-- `skills/council/references/incumbent-draft-mode.md` 是 incumbent-draft 协议 SOT；Claude package 中的同名 reference 保持逐字节副本。
+- `skills/council/references/incumbent-draft-mode.md` 与 Claude package 中的同名 reference 字节一致。council 没有保证 mode。
 - `skills/review-loop/bin/redact.py` 是共享的**可选** redactor SOT；review-loop / council 的通用、Claude 四份副本必须逐字节一致，但它不再是 review-loop 的通过前置。`skills/council/bin/safe_check.py` 是 council 输出脱敏 wrapper SOT，两份分发副本同样 byte-lock；`check-format.py` fail-closed 校验。
 
 ## 路由边界
 
-路由按终点而非工件是否存在：架构 / 技术选择使用 `council`，即使已有草稿；找错、修复并迭代到 `APPROVE` 使用 `review-loop`。两者都需要时先运行 council，方向未决则停止，已决后 review-loop 才能按 decision record 改稿。Council 的 incumbent-draft mode 必须保持草稿只读，并把 `keep` / `replace` / `combine` / `unresolved` 写入决策记录，而不是新增终态 token。
+路由按终点而非工件是否存在：架构 / 技术选择使用 `council`，即使已有草稿；找错、修复并迭代到 `APPROVE` 使用 `review-loop`。两者都需要时先运行 council。选择未写出之前不改稿。Council 的 incumbent-draft mode 保持草稿只读，结论是一段散文，不写决策记录，也不发终态 token。
 
 ## Subagent 隔离不变量
 
@@ -42,13 +42,13 @@ herbertgao-skills/
 
 ## 契约校验
 
-这些 skill 的 SKILL.md 带**运行期字符串**(层级 marker、补救命令、catalog 源路径),它们自己的闸门要逐字匹配——错一个字符,闸门就静默失效。所以:
+这些 skill 的 SKILL.md 带必须逐字保留的句子。错一个字符，闸门就静默失效。所以:
 
-- [`contracts/format.json`](../contracts/format.json) 定义所有 required_verbatim pin、families 闭包、孪生字节相等、Claude 副本容许的分歧。
+- [`contracts/format.json`](../contracts/format.json) 定义 required_verbatim pin、families 闭包，以及通用版与 Claude 副本的字节相等。
 - [`scripts/check-format.py`](../scripts/check-format.py) 机械校验(每次 push 跑 CI,发版前再跑一遍);`--self-test` 证明这些检查确实能 fail。
 - 有干净 `~/.agency-agents` checkout 时,会拿真实 catalog 验证路径表确实解析得到(避免 `Application Security Engineer` 之类解析到空)。
 
-角色解析梯：`review-loop` 是 `registered → local → embedded → same-context`，任何一档缺失都不阻断；其首轮领域专家可选 0..N 个，但每个已选角色都须由具体工件触点直接证明对口。`opsx` 是 `registered → local → embedded`；`council` 是 `catalog → synthesized`——`synthesized`(自撰 persona)最多一席、且不能当反方席，一个真专家都解析不出来就 `STOPPED`。
+缺 catalog、sandbox 或 native worker 不阻断 review-loop 或 council，也不记录路由档。review-loop 首轮仍跑 CR 与 RC；领域专家可选，每个已选角色须由具体触点证明对口。council 能坐谁就坐谁，然后给出结论。opsx 仍按自身规则：解析不出角色就停该组。
 
 ## ELI5 上游同步
 

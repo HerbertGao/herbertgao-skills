@@ -17,10 +17,8 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
-import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONTRACT = os.path.join(ROOT, "contracts", "format.json")
@@ -43,11 +41,6 @@ MARKER_RE = re.compile(r"[\[［]\s*[Ee][Mm][Bb][Ee]?[Dd]+[Ee]?[Dd]?[^\]］\n]*[\
 LOCAL_PATH_RE = re.compile(r"\[local: ([A-Za-z0-9._/-]+\.md)\]")
 # The ladder's own backtick paths — the table the agent actually reads to resolve a lane.
 SPEC_PATH_RE = re.compile(r"`([a-z0-9-]+/[a-z0-9./-]+\.md)`")
-COUNCIL_DISPATCH_KINDS = ("seat", "re-dispatch", "retry", "cross-exam", "DA",
-                          "DA-final", "tie-breaker", "label", "compare", "audit")
-COUNCIL_AUDITOR_REF = "council/skills/council/references/auditor-enumerator.md"
-COUNCIL_AUDITOR_FIXTURE = "evals/council/fixtures/claude-auditor/session.jsonl"
-COUNCIL_CLAUDE_SKILL = "council/skills/council/SKILL.md"
 REVIEW_LOOP_WORKTREE_POLICY = (
     "Do not create or request a worktree solely for review; access to the required "
     "target checkouts is more important than a copied checkout."
@@ -88,43 +81,6 @@ def load_contract_json():
         raise RuntimeError(f"cannot read JSON {CONTRACT}: {err}") from err
     except (json.JSONDecodeError, ValueError) as err:
         raise ValueError(f"invalid JSON in {CONTRACT}: {err}") from err
-
-
-def _read_utf8(path: str) -> str:
-    try:
-        with open(path, encoding="utf-8") as fh:
-            return fh.read()
-    except OSError as err:
-        raise RuntimeError(f"cannot read fixture {path}: {err}") from err
-
-
-def _write_utf8(path: str, content: str, mode: str = "w") -> None:
-    try:
-        with open(path, mode, encoding="utf-8") as fh:
-            fh.write(content)
-    except OSError as err:
-        raise RuntimeError(f"cannot write fixture {path}: {err}") from err
-
-
-def _copytree(source: str, target: str) -> None:
-    try:
-        shutil.copytree(source, target)
-    except OSError as err:
-        raise RuntimeError(f"cannot copy fixture tree {source}: {err}") from err
-
-
-def _remove(path: str) -> None:
-    try:
-        os.unlink(path)
-    except OSError as err:
-        raise RuntimeError(f"cannot remove fixture {path}: {err}") from err
-
-
-def _mkdir(path: str) -> None:
-    try:
-        os.makedirs(path)
-    except OSError as err:
-        raise RuntimeError(f"cannot create fixture directory {path}: {err}") from err
 
 
 def _select_required_scope(body: str, selector: str):
@@ -339,25 +295,6 @@ def check_description_lengths(files: dict, limit: int = 1024) -> list:
     return fails
 
 
-def check_toolless_agent_frontmatter(files: dict) -> list:
-    """Shipped tool-less agents must declare an exactly empty tool list in YAML."""
-    paths = ("council/agents/seat.md",)
-    fails = []
-    for path in paths:
-        body = files.get(path)
-        if body is None:
-            fails.append(f"missing tool-less agent: {path}")
-            continue
-        frontmatter = re.match(r"\A---\n(.*?)\n---(?:\n|\Z)", body, re.DOTALL)
-        if frontmatter is None:
-            fails.append(f"{path}: missing YAML frontmatter")
-            continue
-        tools = re.findall(r"^tools:\s*(.*?)\s*$", frontmatter.group(1), re.MULTILINE)
-        if tools != ["[]"]:
-            fails.append(f"{path}: tools must be declared exactly once as [] (observed {tools!r})")
-    return fails
-
-
 def check_review_redactor_copies(files: dict) -> list:
     """Security-sensitive redactor logic must be identical in every distribution."""
     paths = (
@@ -395,7 +332,7 @@ def check_council_safe_check_copies(files: dict) -> list:
 
 
 def check_council_reference_copies(files: dict) -> list:
-    """The host-neutral incumbent protocol must not drift across distributions."""
+    """The incumbent reference is part of the shared procedure, so the copies match."""
     paths = (
         "skills/council/references/incumbent-draft-mode.md",
         "council/skills/council/references/incumbent-draft-mode.md",
@@ -404,8 +341,11 @@ def check_council_reference_copies(files: dict) -> list:
     if missing:
         return [f"missing incumbent-draft protocol copy: {path}" for path in missing]
     source = files[paths[0]]
-    return [f"incumbent-draft protocol drift: {path}" for path in paths[1:]
-            if files[path] != source]
+    return [
+        f"incumbent-draft reference drift: {path}"
+        for path in paths[1:]
+        if files[path] != source
+    ]
 
 
 def check_eli5_license_copies(files: dict, expected_sha: str = ELI5_LICENSE_SHA256) -> list:
@@ -433,31 +373,14 @@ def check_eli5_license_copies(files: dict, expected_sha: str = ELI5_LICENSE_SHA2
     return fails
 
 
-HOST_KEY = "subagent_type"   # the host's dispatch key: the one thing the neutral file never names
-HOST_COUPLED_SKILLS = frozenset({"council", "openspec-apply-change-subagent", "review-loop"})
-REVIEW_LOOP_CLAUDE_ADAPTER = (
-    "### Claude Code adapter\n\n"
-    "On Claude Code, when a cross-family extra pass would be useful, prefer a direct "
-    "review-only dispatch with `subagent_type: codex:codex-rescue`. Give it the same "
-    "review target and output contract; never use it as the fixer. Its absence does not "
-    "block CR, RC, selected domain experts, or a terminal result.\n\n"
-)
+HOST_KEY = "subagent_type"   # a host dispatch key; neither copy may name one
 
 
 def check_claude_copies(files: dict) -> list:
-    """The hand-maintained Claude copy must stay a Claude copy.
+    """Claude and generic SKILL.md copies must match.
 
-    `skills/<n>/` is platform-neutral; `<plugin>/skills/<n>/` is its Claude-specific
-    sibling, written by hand and NOT a mirror. Nothing guarded that, so one blanket
-    `cp skills/<n>/SKILL.md <plugin>/skills/<n>/SKILL.md` flattens the Claude copy
-    into the neutral text — every `subagent_type`, `general-purpose`, `isolation:`
-    silently gone — and the validator still says OK. (It happened, on 2026-07-14.)
-
-    The predecessor of this check was a semantic parity diff whose allowed-divergence
-    list was generated FROM the current diff: an answer key, green by construction.
-    So the generic checks read the files, not a generated allowlist. Review-loop is
-    narrower: its Claude copy must equal the neutral body plus one canonical adapter
-    block, which rejects both flattening and arbitrary Claude-only core drift.
+    A host-only branch is how a strong model gets a different procedure than the
+    one the generic skill states. Divergence is a failure, not a plugin feature.
     """
     fails = []
     for src in sorted(f for f in files if re.fullmatch(r"skills/[^/]+/SKILL\.md", f)):
@@ -467,290 +390,11 @@ def check_claude_copies(files: dict) -> list:
         if not copies:
             fails.append(f"{src} has no Claude copy at <plugin>/skills/{name}/SKILL.md")
         if HOST_KEY in files[src]:
-            fails.append(f"{src} names {HOST_KEY!r} — the neutral spec must not carry a host's dispatch key")
+            fails.append(f"{src} names {HOST_KEY!r} — skill copies must not carry a host dispatch key")
         for c in copies:
-            if name == "review-loop":
-                marker = "## The loop\n"
-                if files[src].count(marker) != 1:
-                    fails.append(f"{src} must contain exactly one {marker.strip()!r} adapter insertion point")
-                    continue
-                expected = files[src].replace(marker, REVIEW_LOOP_CLAUDE_ADAPTER + marker)
-                if files[c] != expected:
-                    fails.append(f"{c} differs from {src} by more than the one canonical Claude adapter block")
-            elif name in HOST_COUPLED_SKILLS:
-                if files[c] == files[src]:
-                    fails.append(f"{c} is a byte-copy of {src} — the Claude copy was flattened onto the neutral one")
-                elif HOST_KEY not in files[c]:
-                    fails.append(f"{c} never names {HOST_KEY!r} — it is not dispatching on Claude Code")
-            elif files[c] != files[src]:
-                fails.append(f"{c} is a host-neutral Claude copy but differs from {src}")
+            if files[c] != files[src]:
+                fails.append(f"{c} differs from {src} — Claude and generic skill copies must match")
     return fails
-
-
-def check_council_header_parser(files: dict) -> list:
-    """Exercise the Claude auditor's parser against the header agents must emit."""
-    rel = COUNCIL_AUDITOR_REF
-    body = files.get(rel)
-    if body is None:
-        return [f"{rel}: required auditor reference is missing"]
-    found = re.search(r"^HEADER_RE=re\.compile\(r'(.+)'\)$", body, re.MULTILINE)
-    if found is None:
-        return [f"{rel}: auditor reference has no extractable HEADER_RE"]
-    try:
-        pattern = re.compile(found.group(1))
-    except re.error as err:
-        return [f"{rel}: HEADER_RE does not compile: {err}"]
-    expected_kinds = COUNCIL_DISPATCH_KINDS
-    skill = files.get(COUNCIL_CLAUDE_SKILL)
-    if skill is not None:
-        template = re.search(r"kind: <([^>]+)> \| dispatch:", skill)
-        if template is None:
-            return [f"{COUNCIL_CLAUDE_SKILL}: dispatch template has no extractable kind set"]
-        template_kinds = tuple(template.group(1).split("|"))
-        if template_kinds != COUNCIL_DISPATCH_KINDS:
-            return [f"{COUNCIL_CLAUDE_SKILL}: template kind set {template_kinds!r} differs from checker/parser contract"]
-        expected_kinds = template_kinds
-    for kind in expected_kinds:
-        valid = ("council: choose a database | run: deadbeef | seat: /tmp/expert.md | round: 1 "
-                 f"| kind: {kind} | dispatch: 1")
-        parsed = pattern.fullmatch(valid)
-        if parsed is None or parsed.groupdict().get("run") != "deadbeef" or \
-                parsed.groupdict().get("kind") != kind or parsed.groupdict().get("k") != "1":
-            return [f"{rel}: HEADER_RE rejects or mis-parses kind {kind!r}"]
-    no_kind = ("council: choose a database | run: deadbeef | seat: /tmp/expert.md | round: 1 "
-               "| dispatch: 1")
-    unknown_kind = ("council: choose a database | run: deadbeef | seat: /tmp/expert.md | round: 1 "
-                    "| kind: fork | dispatch: 1")
-    if pattern.fullmatch(no_kind) or pattern.fullmatch(unknown_kind):
-        return [f"{rel}: HEADER_RE accepts a header with no kind"]
-    return []
-
-
-def _run_council_auditor_fixture(body: str | None, fixture: str) -> tuple[subprocess.CompletedProcess[str] | None, str | None]:
-    """Extract and run the shipped enumerator against one synthetic main log."""
-    if body is None or not os.path.isfile(fixture):
-        return None, "Claude auditor fixture or enumerator is missing"
-    found = re.search(r"```bash\npython3 .*? <<'EOF'\n(.*?)\nEOF\n```", body, re.DOTALL)
-    if found is None:
-        return None, f"{COUNCIL_AUDITOR_REF}: fenced enumerator script is not extractable"
-    code = found.group(1)
-    needle = 'glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl"))'
-    if needle not in code:
-        return None, f"{COUNCIL_AUDITOR_REF}: canonical log discovery expression is missing"
-    code = code.replace(needle, "[sys.argv[3]]", 1)
-    run = subprocess.run([sys.executable, "-c", code, "deadbeef", "9", fixture],
-                         cwd=ROOT, text=True, capture_output=True)
-    return run, None
-
-
-def check_council_auditor_inflight(files: dict) -> list:
-    """Exercise completed, failed, retried, tool-using and in-flight dispatches."""
-    body = files.get(COUNCIL_AUDITOR_REF)
-    fixture = os.path.join(ROOT, COUNCIL_AUDITOR_FIXTURE)
-    run, err = _run_council_auditor_fixture(body, fixture)
-    if err or run is None:
-        return [err or "Claude auditor fixture returned no process result"]
-    if run.returncode != 0:
-        return [f"Claude auditor in-flight fixture failed: {run.stderr.strip() or run.stdout.strip()}"]
-    expected = (
-        f"LOG\t{os.path.abspath(fixture)}",
-        "PRE-RUN\t1\thistorical-use\t",
-        "DISPATCH\t1\tseat\tseat\tNone\t",
-        'TOOL\tseat-k1\trecord:1\tWrite\t{"file_path": "/tmp/council-workdir/note.md", "content": "evidence"}',
-        'TOOL\tseat-k1\trecord:2\tmcp__deploy__production\t{"target": "staging"}',
-        "FAILED\t2\tcross-exam\tcross-exam\tNone\t",
-        "DISPATCH\t3\tretry\tcross-exam\t2\t",
-        "DISPATCH\t4\tre-dispatch\tseat\t1\t",
-        "FAILED\t5\tre-dispatch\tcross-exam\t3\t",
-        "DISPATCH\t6\tretry\tcross-exam\t5\t",
-        "FAILED\t8\taudit\taudit\tNone\t",
-        "DISPATCH\t9\tretry\taudit\t8\t",
-        "\tIN-FLIGHT\t",
-    )
-    if "UNVERIFIABLE" in run.stdout or any(item not in run.stdout for item in expected):
-        return ["Claude auditor mishandles sidecar tools, failure/retry, or its in-flight audit retry"]
-    return []
-
-
-def check_council_auditor_sidecar_negatives(files: dict) -> list:
-    """Prove zero and duplicate sidecars are both surfaced, never chosen arbitrarily."""
-    body = files.get(COUNCIL_AUDITOR_REF)
-    fixture_root = os.path.dirname(os.path.join(ROOT, COUNCIL_AUDITOR_FIXTURE))
-    if body is None or not os.path.isdir(fixture_root):
-        return ["Claude auditor sidecar-negative fixture or enumerator is missing"]
-    with tempfile.TemporaryDirectory(prefix="council-auditor-") as tmp:
-        missing = os.path.join(tmp, "missing")
-        _copytree(fixture_root, missing)
-        _remove(os.path.join(missing, "worker", "subagents", "agent-seat1.jsonl"))
-        run, err = _run_council_auditor_fixture(body, os.path.join(missing, "session.jsonl"))
-        if err or run is None or run.returncode != 0 or \
-                "UNVERIFIABLE\tseat-k1\tno-sidecar\tseat1" not in run.stdout:
-            return [err or "Claude auditor does not surface a missing completed-worker sidecar"]
-
-        duplicate = os.path.join(tmp, "duplicate")
-        _copytree(fixture_root, duplicate)
-        extra = os.path.join(duplicate, "second", "subagents")
-        _mkdir(extra)
-        shutil.copy2(os.path.join(duplicate, "worker", "subagents", "agent-seat1.jsonl"), extra)
-        run, err = _run_council_auditor_fixture(body, os.path.join(duplicate, "session.jsonl"))
-        if err or run is None or run.returncode != 0 or \
-                "UNVERIFIABLE\tseat-k1\tduplicate-sidecars:2\tseat1" not in run.stdout:
-            return [err or "Claude auditor does not surface duplicate completed-worker sidecars"]
-
-        descendant = os.path.join(tmp, "descendant")
-        _copytree(fixture_root, descendant)
-        seat_sidecar = os.path.join(descendant, "worker", "subagents", "agent-seat1.jsonl")
-        _write_utf8(seat_sidecar,
-                    '{"message":{"content":[{"type":"tool_use","name":"Agent","id":"child-use","input":{}}]}}\n',
-                    mode="a")
-        run, err = _run_council_auditor_fixture(body, os.path.join(descendant, "session.jsonl"))
-        if err or run is None or run.returncode != 0 or \
-                "UNVERIFIABLE\tseat-k1\tdescendant-dispatch:child-use" not in run.stdout:
-            return [err or "Claude auditor hides a descendant dispatch from a seat sidecar"]
-
-        malformed = os.path.join(tmp, "malformed-sidecar")
-        _copytree(fixture_root, malformed)
-        seat_sidecar = os.path.join(malformed, "worker", "subagents", "agent-seat1.jsonl")
-        sidecar_body = _read_utf8(seat_sidecar)
-        _write_utf8(seat_sidecar,
-                    '{"message":{"role":"assistant","content":{"type":"tool_use","name":"Write","id":"hidden-write","input":{}}}}\n'
-                    + sidecar_body.split("\n", 1)[1])
-        run, err = _run_council_auditor_fixture(body, os.path.join(malformed, "session.jsonl"))
-        observed = (run.stdout + run.stderr) if run else (err or "")
-        if "malformed-schema:1" not in observed:
-            return ["Claude auditor accepts a non-array sidecar message.content"]
-    return []
-
-
-def check_council_auditor_record_negatives(files: dict) -> list:
-    """Mutation-check fail-closed JSONL identity and retry linkage."""
-    body = files.get(COUNCIL_AUDITOR_REF)
-    fixture_root = os.path.dirname(os.path.join(ROOT, COUNCIL_AUDITOR_FIXTURE))
-    if body is None or not os.path.isdir(fixture_root):
-        return ["Claude auditor record-negative fixture or enumerator is missing"]
-    original = _read_utf8(os.path.join(fixture_root, "session.jsonl"))
-    lines = original.splitlines()
-
-    def pick(needle):
-        return next(line for line in lines if needle in line)
-    duplicate = original.replace(
-        original.splitlines()[3],
-        original.splitlines()[3] + "\n" + original.splitlines()[3].replace("dispatch: 1", "dispatch: 4"), 1)
-    seat_result = pick('"tool_use_id":"seat-use"')
-    duplicate_result = original.replace(seat_result, seat_result + "\n" + seat_result, 1)
-    failed_audit = pick('"id":"failed-audit-use"')
-    second_retry = ('{"message":{"content":[{"type":"tool_use","name":"Agent","id":"seat-retry2-use",'
-                    '"input":{"prompt":"council: choose a database | run: deadbeef | seat: /tmp/expert.md '
-                    '| round: 2 | kind: retry | dispatch: 4\\nretry-for: 2","subagent_type":"Explore"}}]}}')
-    duplicate_retry = original.replace(failed_audit, second_retry + "\n" + failed_audit, 1)
-    failed_seat_result = pick('"tool_use_id":"failed-seat-use"')
-    seat_retry_dispatch = pick('"id":"seat-retry-use"')
-    late_seat_failure = original.replace(failed_seat_result + "\n", "", 1).replace(
-        seat_retry_dispatch, seat_retry_dispatch + "\n" + failed_seat_result, 1)
-    audit_failure_result = pick('"tool_use_id":"failed-audit-use"')
-    audit_retry_dispatch = pick('"id":"audit-retry-use"')
-    late_audit_failure = original.replace(audit_failure_result + "\n", "", 1).replace(
-        audit_retry_dispatch, audit_retry_dispatch + "\n" + audit_failure_result, 1)
-    seat_dispatch = pick('"id":"seat-use"')
-    early_result = original.replace(seat_result + "\n", "", 1).replace(
-        seat_dispatch, seat_result + "\n" + seat_dispatch, 1)
-    retry_type_line = seat_retry_dispatch.replace('"subagent_type":"Explore"',
-                                                   '"subagent_type":"general-purpose"')
-    redispatch = pick('"id":"seat-redispatch-use"')
-    second_redispatch = redispatch.replace('"id":"seat-redispatch-use"',
-                                            '"id":"seat-redispatch2-use"').replace(
-                                                "dispatch: 4", "dispatch: 7")
-    duplicate_redispatch = original.replace(failed_audit, second_redispatch + "\n" + failed_audit, 1)
-    body_target = "round: 2 | kind: cross-exam | dispatch: 2"
-    body_retry = "round: 2 | kind: retry | dispatch: 3\\nretry-for: 2"
-    crlf_body_drift = original.replace(body_target, body_target + "\\nbody-a\\r\\nbody-b", 1).replace(
-        body_retry, body_retry + "\\nbody-a\\nbody-b", 1)
-    trailing_body_drift = original.replace(body_target, body_target + "\\nbody", 1).replace(
-        body_retry, body_retry + "\\nbody\\n", 1)
-    direct_bad_seat = original.replace(
-        'seat: — | round: 1 | kind: retry | dispatch: 9\\nretry-for: 8',
-        'seat: - | round: 1 | kind: audit | dispatch: 9', 1)
-    async_note = pick('<task-notification>')
-    async_launch = pick('"id":"seat-retry-use"')
-    no_async_terminal = original.replace(async_note + "\n", "", 1)
-    mismatched_async_terminal = original.replace("<task-id>retry3</task-id>",
-                                                  "<task-id>other-task</task-id>", 1)
-    duplicate_async_terminal = original.replace(async_note, async_note + "\n" + async_note, 1)
-    early_async_terminal = original.replace(async_note + "\n", "", 1).replace(
-        async_launch, async_note + "\n" + async_launch, 1)
-    variants = [
-        ("malformed-json", "{not-json\n" + original, "malformed-json:1"),
-        ("duplicate-tool-id", duplicate, "duplicate-tool-use-id:seat-use"),
-        ("duplicate-result-id", duplicate_result, "duplicate-result-id:seat-use"),
-        ("duplicate-json-key", original.replace(
-            seat_dispatch,
-            seat_dispatch.replace('"subagent_type":"Explore"',
-                                  '"subagent_type":"Explore","subagent_type":"general-purpose"'), 1),
-         "malformed-json:4"),
-        ("ambiguous-error", original.replace('"toolUseResult":{"status":"failed_prelaunch","error":"API Error: 503"}',
-                                              '"toolUseResult":{}', 1), "ambiguous-result"),
-        ("bare-api-error", original.replace('"toolUseResult":{"status":"failed_prelaunch","error":"API Error: 503"}',
-                                             '"toolUseResult":"API Error: 503"', 1), "ambiguous-result"),
-        ("missing-resolved-model", original.replace(',"resolvedModel":"claude-sonnet"', "", 1),
-         "missing-resolved-model"),
-        ("async-launch-without-terminal", no_async_terminal, "UNVERIFIABLE\tseat-k3\tno-result"),
-        ("async-terminal-wrong-task", mismatched_async_terminal, "terminal-join-mismatch"),
-        ("duplicate-async-terminal", duplicate_async_terminal, "ambiguous-terminal-notification"),
-        ("async-terminal-before-launch", early_async_terminal, "terminal-before-launch"),
-        ("async-terminal-failure", original.replace("<status>completed</status>",
-                                                     "<status>failed</status>", 1),
-         "FAILED\t3\tretry\tcross-exam\t2"),
-        ("missing-retry-link", original.replace("retry-for: 2", "retry-for: x", 1),
-         "retry-k3:missing-retry-for"),
-        ("forward-retry-link", original.replace("retry-for: 2", "retry-for: 999", 1),
-         "retry-k3:retry-target-not-earlier"),
-        ("duplicate-retry", duplicate_retry, "retry-k4:duplicate-retry"),
-        ("retry-body-drift", original.replace("retry-for: 2", "retry-for: 2\\nleaked position", 1),
-         "retry-k3:retry-prompt-drift"),
-        ("retry-seat-drift", original.replace(
-            "seat: /tmp/expert.md | round: 2 | kind: retry | dispatch: 3",
-            "seat: /tmp/other.md | round: 2 | kind: retry | dispatch: 3", 1),
-         "retry-k3:retry-prompt-drift"),
-        ("retry-round-drift", original.replace(
-            "round: 2 | kind: retry | dispatch: 3", "round: 3 | kind: retry | dispatch: 3", 1),
-         "retry-k3:retry-prompt-drift"),
-        ("retry-type-drift", original.replace(seat_retry_dispatch, retry_type_line, 1),
-         "retry-k3:retry-prompt-drift"),
-        ("retry-proposition-drift", original.replace(
-            "council: choose a database | run: deadbeef | seat: /tmp/expert.md | round: 2 | kind: retry",
-            "council: choose a cache | run: deadbeef | seat: /tmp/expert.md | round: 2 | kind: retry", 1),
-         "retry-k3:retry-prompt-drift"),
-        ("missing-re-dispatch-link", original.replace("re-dispatch-for: 1", "re-dispatch-for: x", 1),
-         "re-dispatch-k4:missing-re-dispatch-link"),
-        ("forward-re-dispatch-link", original.replace("re-dispatch-for: 1", "re-dispatch-for: 999", 1),
-         "re-dispatch-k4:re-dispatch-target-not-earlier"),
-        ("duplicate-re-dispatch", duplicate_redispatch, "re-dispatch-k7:duplicate-re-dispatch"),
-        ("re-dispatch-body-drift", original.replace(
-            "missing-field: strongest-counter", "missing-field: strongest-counter\\nleaked position", 1),
-         "re-dispatch-k4:re-dispatch-prompt-drift"),
-        ("retry-crlf-body-drift", crlf_body_drift, "retry-k3:retry-prompt-drift"),
-        ("retry-trailing-body-drift", trailing_body_drift, "retry-k3:retry-prompt-drift"),
-        ("malformed-record-shape", original.replace(
-            seat_dispatch, '{"message":{"content":{"type":"tool_use","name":"Agent"}}}', 1),
-         "malformed-schema:4"),
-        ("result-before-dispatch", early_result, "result-before-dispatch:k1"),
-        ("seat-failure-after-retry", late_seat_failure, "retry-k3:retry-target-failure-not-before-retry"),
-        ("audit-failure-after-retry", late_audit_failure, "retry-k9:retry-target-failure-not-before-retry"),
-        ("direct-audit-noncanonical-seat", direct_bad_seat, "expected one real audit dispatch"),
-        ("noncanonical-auditor-seat", original.replace("seat: —", "seat: -"),
-         "expected one real audit dispatch"),
-    ]
-    with tempfile.TemporaryDirectory(prefix="council-auditor-records-") as tmp:
-        for label, content, expected in variants:
-            root = os.path.join(tmp, label)
-            _copytree(fixture_root, root)
-            fixture = os.path.join(root, "session.jsonl")
-            _write_utf8(fixture, content)
-            run, err = _run_council_auditor_fixture(body, fixture)
-            observed = (run.stdout + run.stderr) if run else (err or "")
-            if expected not in observed:
-                return [f"Claude auditor mutation {label!r} was not rejected as {expected!r}"]
-    return []
 
 
 def _select_consumer(body: str, selector: str):
@@ -848,18 +492,6 @@ def check_consumer_surfaces(contract: dict, files: dict) -> list:
             for literal in spec.get("required", []):
                 if literal not in selected:
                     fails.append(f"[{name}] {rel} {selector}: installation description omits {literal!r}")
-            if "ADVISORY" in spec.get("required", []):
-                clean = re.sub(r"non-authoriz\w*|does not authorize|cannot authorize|never authorizes?|non-certif\w*",
-                               "", selected.lower())
-                authority = re.search(
-                    r"\b(authoriz\w*|permits?|allow(?:s|ed)?|may proceed|green[- ]light)\b|"
-                    r"\b(?:can|should|must)\s+(?:now\s+)?proceed\b|"
-                    r"\bproceed(?:s|ed|ing)?\s+with\s+(?:the\s+)?implementation\b|"
-                    r"\bimplementation\s+(?:can|should|must)\s+proceed\b|"
-                    r"implementation[^.;\n]*(approved|enabled)", clean)
-                certified = re.search(r"\badvisory\b.{0,80}\b(certif\w*|audited|audit\s+pass)\b", clean, re.DOTALL)
-                if authority or certified:
-                    fails.append(f"[{name}] {rel} {selector}: ADVISORY description contradicts its non-authorizing, unaudited boundary")
     return fails
 
 
@@ -982,16 +614,11 @@ def main() -> int:
         fails.append("forbidden_everywhere.regex_patterns is missing/empty — the collocation scan is disarmed")
     fails += check_families(contract, files)
     fails += check_description_lengths(files)
-    fails += check_toolless_agent_frontmatter(files)
     fails += check_review_redactor_copies(files)
     fails += check_council_safe_check_copies(files)
     fails += check_council_reference_copies(files)
     fails += check_eli5_license_copies(files)
     fails += check_claude_copies(files)
-    fails += check_council_header_parser(files)
-    fails += check_council_auditor_inflight(files)
-    fails += check_council_auditor_sidecar_negatives(files)
-    fails += check_council_auditor_record_negatives(files)
     fails += check_consumer_surfaces(contract, files)
     fails += check(contract, files, tracked)
 
@@ -1088,19 +715,6 @@ def self_test() -> int:
             ok = False
         print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
 
-    tool_agent_paths = ("council/agents/seat.md",)
-    tool_agent_files = dict.fromkeys(tool_agent_paths, "---\ntools: []\n---\n# Agent\n")
-    tool_agent_cases = [
-        ("tool-less frontmatter passes", tool_agent_files, 0),
-        ("non-empty tool list fails", {**tool_agent_files, tool_agent_paths[0]: "---\ntools: [Read]\n---\n"}, 1),
-        ("missing tool-less agent fails", {path: body for path, body in tool_agent_files.items() if path != tool_agent_paths[0]}, 1),
-    ]
-    for label, fs, expect in tool_agent_cases:
-        got = 1 if check_toolless_agent_frontmatter(fs) else 0
-        if got != expect:
-            ok = False
-        print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
-
     redactor_paths = (
         "skills/review-loop/bin/redact.py",
         "review-loop/bin/redact.py",
@@ -1134,6 +748,21 @@ def self_test() -> int:
             ok = False
         print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
 
+    reference_paths = (
+        "skills/council/references/incumbent-draft-mode.md",
+        "council/skills/council/references/incumbent-draft-mode.md",
+    )
+    reference_cases = [
+        ("incumbent references match", dict.fromkeys(reference_paths, "x"), 0),
+        ("incumbent reference drifted", {**dict.fromkeys(reference_paths, "x"), reference_paths[1]: "y"}, 1),
+        ("incumbent reference missing", {reference_paths[0]: "x"}, 1),
+    ]
+    for label, fs, expect in reference_cases:
+        got = 1 if check_council_reference_copies(fs) else 0
+        if got != expect:
+            ok = False
+        print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
+
     eli5_license_paths = (
         "skills/eli5/LICENSE.upstream",
         "eli5/skills/eli5/LICENSE.upstream",
@@ -1159,10 +788,9 @@ def self_test() -> int:
 
     N, C = "skills/council/SKILL.md", "p/skills/council/SKILL.md"
     copy_cases = [
-        ("claude copy differs and dispatches", {N: "neutral", C: "claude subagent_type: x"}, 0),
-        ("claude copy flattened onto neutral", {N: "neutral", C: "neutral"}, 1),
-        ("claude copy lost its dispatch key", {N: "neutral", C: "claude, no key"}, 1),
-        ("neutral spec grew a host key", {N: "neutral subagent_type: x", C: "claude subagent_type: x"}, 1),
+        ("claude copy matches generic", {N: "neutral", C: "neutral"}, 0),
+        ("claude copy drifted", {N: "neutral", C: "claude subagent_type: x"}, 1),
+        ("neutral spec grew a host key", {N: "neutral subagent_type: x", C: "neutral subagent_type: x"}, 1),
         ("claude copy missing entirely", {N: "neutral"}, 1),
     ]
     for label, fs, expect in copy_cases:
@@ -1171,40 +799,16 @@ def self_test() -> int:
             ok = False
         print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
 
-    kinds = "|".join(COUNCIL_DISPATCH_KINDS)
-    header = ("HEADER_RE=re.compile(r'^council: (?P<proposition>.+?) \\| run: (?P<run>[0-9a-f]{8}) "
-              "\\| seat: (?P<seat>.+?) \\| round: (?P<round>\\d+) \\| kind: "
-              f"(?P<kind>{kinds}) \\| dispatch: (?P<k>\\d+)$')")
-    header_cases = [
-        ("council header parser matches its template", header, 0),
-        ("council header parser omits kind field", header.replace(f" \\| kind: (?P<kind>{kinds})", ""), 1),
-        ("council header parser omits one kind", header.replace("|label|compare|audit", "|label|audit"), 1),
-        ("council header parser is missing", "no parser", 1),
-    ]
-    for label, body, expect in header_cases:
-        got = 1 if check_council_header_parser({"council/skills/council/references/auditor-enumerator.md": body}) else 0
-        if got != expect:
-            ok = False
-        print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
-
-    got = 1 if check_council_header_parser({}) else 0
-    if got != 1:
-        ok = False
-    print(f"  {'✅' if got == 1 else '❌'} {'council auditor reference is absent':<48} caught={bool(got)}  want=True")
-
     actual = load_markdown()
 
     review_neutral = "skills/review-loop/SKILL.md"
     review_claude = "review-loop/skills/review-loop/SKILL.md"
     review_copy_cases = [
-        ("review-loop Claude has only canonical adapter",
-         {review_neutral: actual[review_neutral], review_claude: actual[review_claude]}, 0),
-        ("review-loop Claude core contradiction is caught",
+        ("review-loop Claude matches generic",
+         {review_neutral: actual[review_neutral], review_claude: actual[review_neutral]}, 0),
+        ("review-loop Claude drift is caught",
          {review_neutral: actual[review_neutral],
-          review_claude: actual[review_claude] + "\nCR and RC are optional.\n"}, 1),
-        ("review-loop Claude adapter drift is caught",
-         {review_neutral: actual[review_neutral],
-          review_claude: actual[review_claude].replace("review-only dispatch", "fixing dispatch", 1)}, 1),
+          review_claude: actual[review_neutral] + "\nCR and RC are optional.\n"}, 1),
     ]
     for label, fs, expect in review_copy_cases:
         got = 1 if check_claude_copies(fs) else 0
@@ -1235,37 +839,10 @@ def self_test() -> int:
     }
     review_files = {rel: actual[rel] for rel in review_spec["files"]}
     tracked_review = set(review_spec["catalog_paths"].values())
-    route_block = (
-        "1. **`[registered]`** — a matching native/custom role in a fresh worker.\n"
-        "2. **`[local: <catalog path>]`** — a fresh generic worker with a trusted local persona injected."
-    )
-    route_swapped = (
-        "1. **`[local: <catalog path>]`** — a fresh generic worker with a trusted local persona injected.\n"
-        "2. **`[registered]`** — a matching native/custom role in a fresh worker."
-    )
     review_mutations = [
-        ("review portable route order is pinned", route_block, route_swapped),
         ("review-only worktree ban is pinned",
          "Do not create or request a worktree solely for review; access to the required target checkouts is more important than a copied checkout.",
          "Create a worktree whenever reviewer isolation is available."),
-        ("review artifact/code roots stay separate",
-         "Track the **artifact root** that owns the proposal/spec and the **implementation root** that owns the code, diff, and tests separately; an OpenSpec change may live in an umbrella repository while its implementation lives in a nested repository.",
-         "Treat the umbrella repository as the only review root."),
-        ("review code worker cwd uses implementation root",
-         "Set each worker's cwd to the implementation root for code/diff review, or to the artifact root for prose-only review, when the host supports it.",
-         "Set each worker's cwd to the artifact root for every review."),
-        ("review repository ownership discovery is pinned",
-         "For each existing path, run `git -C <path-directory> rev-parse --show-toplevel` or an equivalent and use the repository that owns that path",
-         "Use the worker's initial cwd as the repository root"),
-        ("review nested repository precedence is pinned",
-         "a nested repository wins over an ancestor umbrella repository for paths inside it.",
-         "an ancestor umbrella repository wins over a nested repository."),
-        ("review absolute-path fallback is pinned",
-         "Otherwise require repository commands through `git -C <root>` and file reads through absolute paths.",
-         "Otherwise inspect only the worker's initial cwd."),
-        ("review inaccessible-root route fallback is pinned",
-         "If a worker cannot access a required root, fall through to another portable route or `[same-context]`.",
-         "If a worker cannot access a required root, report the reviewed code as absent."),
         ("review experts cannot gain approval authority",
          "Selected experts run in the initial round and add findings only.",
          "Selected experts may approve independently."),
@@ -1284,9 +861,6 @@ def self_test() -> int:
         ("review APPROVE requires both CR and RC",
          "**`APPROVE`** — CR and RC both ran by any portable route; the latest round has no unresolved blocker/major; and that round applied no fixes.",
          "**`APPROVE`** — either CR or RC ran and found no blocker."),
-        ("review full Lanes record template is pinned",
-         "Lanes: CR=<verdict> route=<registered|local:<path>|embedded|same-context> return=<original|summarized> | RC=<verdict> route=<...> return=<original|summarized>",
-         "Lanes: omitted"),
     ]
     for label, old, new in review_mutations:
         mutated = {}
@@ -1331,50 +905,6 @@ def self_test() -> int:
         if got != 1:
             ok = False
         print(f"  {'✅' if got == 1 else '❌'} {label:<48} caught={bool(got)}  want=True")
-
-    inflight_cases = [
-        ("auditor handles tool/failure/retry/in-flight", actual[COUNCIL_AUDITOR_REF], 0),
-        ("in-flight audit retry verifies itself",
-         actual[COUNCIL_AUDITOR_REF].replace('    if current and stt=="PENDING": ',
-                                             '    if False and current and stt=="PENDING": '), 1),
-        ("disabled sidecar scan is caught",
-         actual[COUNCIL_AUDITOR_REF].replace('    tools(hits[0],f"seat-k{kk}")\n',
-                                             '    pass # sidecar scan disabled\n'), 1),
-        ("failed-dispatch handling is exercised",
-         actual[COUNCIL_AUDITOR_REF].replace('    if stt=="FAILED-PRELAUNCH": ',
-                                             '    if False and stt=="FAILED-PRELAUNCH": '), 1),
-    ]
-    for label, body, expect in inflight_cases:
-        got = 1 if check_council_auditor_inflight({COUNCIL_AUDITOR_REF: body}) else 0
-        if got != expect:
-            ok = False
-        print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
-
-    got = 1 if check_council_auditor_sidecar_negatives(actual) else 0
-    if got != 0:
-        ok = False
-    print(f"  {'✅' if got == 0 else '❌'} {'missing/duplicate sidecars are rejected':<48} caught={not bool(got)}  want=True")
-
-    got = 1 if check_council_auditor_record_negatives(actual) else 0
-    if got != 0:
-        ok = False
-    print(f"  {'✅' if got == 0 else '❌'} {'malformed records/retry links are rejected':<48} caught={not bool(got)}  want=True")
-
-    no_body_equality = dict(actual)
-    no_body_equality[COUNCIL_AUDITOR_REF] = actual[COUNCIL_AUDITOR_REF].replace(
-        ' or d["body"]!=target["raw"]', '', 1)
-    got = 1 if check_council_auditor_record_negatives(no_body_equality) else 0
-    if got != 1:
-        ok = False
-    print(f"  {'✅' if got == 1 else '❌'} {'deleted retry body equality is caught':<48} caught={bool(got)}  want=True")
-
-    no_redispatch_equality = dict(actual)
-    no_redispatch_equality[COUNCIL_AUDITOR_REF] = actual[COUNCIL_AUDITOR_REF].replace(
-        ' or d["body"]!=target["body"]', '', 1)
-    got = 1 if check_council_auditor_record_negatives(no_redispatch_equality) else 0
-    if got != 1:
-        ok = False
-    print(f"  {'✅' if got == 1 else '❌'} {'deleted re-dispatch body equality is caught':<48} caught={bool(got)}  want=True")
 
     surface_contract = {"consumer_surfaces": {"council": {
         "targets": [
@@ -1436,14 +966,6 @@ def self_test() -> int:
          "---\nname: council\ndescription: CONVERGED or non-authorizing ADVISORY\n---\n", 0),
         ("duplicate frontmatter description is rejected",
          "---\ndescription: CONVERGED or non-authorizing ADVISORY\ndescription: CONVERGED only\n---\n", 1),
-        ("authorizing advisory contradiction is rejected",
-         "description: ADVISORY is non-authorizing but authorizes implementation; CONVERGED\n", 1),
-        ("implementation-can-proceed contradiction is rejected",
-         "description: ADVISORY is non-authorizing, but implementation can proceed; CONVERGED\n", 1),
-        ("green-light contradiction is rejected",
-         "description: ADVISORY is non-authorizing but is a green light to implement; CONVERGED\n", 1),
-        ("proceed-with-implementation contradiction is rejected",
-         "description: ADVISORY is non-authorizing; proceed with implementation; CONVERGED\n", 1),
     ):
         got = 1 if check_consumer_surfaces(line_contract, {"SKILL.md": body}) else 0
         if got != expect:
@@ -1460,24 +982,7 @@ def self_test() -> int:
     print(f"  {'✅' if got == 1 else '❌'} {'README literals outside council section fail':<48} caught={bool(got)}  want=True")
 
     parsed_contract = load_contract_json()
-    advisory = next(rule for rule in parsed_contract["families"] if "ADVISORY" in rule["regex"])
-    family_contract = {"families": [advisory]}
-    family_cases = [
-        ("canonical ADVISORY family passes", "ADVISORY (debate-converged; unaudited)", 0),
-        ("certified ADVISORY variants are rejected",
-         "ADVISORY (debate-converged; unaudited)\nADVISORY-CERTIFIED (audit PASS)\n"
-         "ADVISORY CERTIFIED (audit PASS)\nADVISORY FULLY CERTIFIED (audit PASS)\n"
-         "ADVISORY-CERTIFIED-AUDITED (audit PASS)\nADVISORY_CERTIFIED (audit PASS)\n"
-         "ADVISORY/CERTIFIED (audit PASS)\nADVISORY[CERTIFIED] (audit PASS)\n"
-         "ADVISORY--CERTIFIED (audit PASS)", 1),
-    ]
-    for label, body, expect in family_cases:
-        got = 1 if check_families(family_contract, {"fixture": body}) else 0
-        if got != expect:
-            ok = False
-        print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
-
-    # 家族正则是行首/表格锚定的，行中散文里的越权 token 靠 forbidden_everywhere 兜底 —— 这里证明兜底真的兜。
+    # Live collocation regexes still reject certification language. They do not require an ADVISORY token.
     # 探针刻意选 trio 专属的形态（字面量表抓不到），否则删掉整个 regex_patterns 探针照样绿。
     forb_contract = {"forbidden_everywhere": parsed_contract["forbidden_everywhere"], "skills": {}}
     forb_cases = [
@@ -1493,46 +998,6 @@ def self_test() -> int:
             ok = False
         print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
 
-    council_spec = parsed_contract["skills"]["council"]
-    council_contract = {
-        "forbidden_everywhere": {"patterns": [], "files": []},
-        "skills": {"council": council_spec},
-    }
-    council_files = {rel: actual[rel] for rel in council_spec["files"]}
-    tracked_council = set(council_spec["catalog_paths"].values())
-    for label, replacement in (
-        ("bare council ADVISORY table token", "**`ADVISORY`**"),
-        ("bracketed council ADVISORY table token", "**`ADVISORY [N open; unaudited]`**"),
-    ):
-        mutated = dict(council_files)
-        rel = "skills/council/SKILL.md"
-        mutated[rel] = mutated[rel].replace("**`ADVISORY (N open; unaudited)`**", replacement, 1)
-        got = 1 if check(council_contract, mutated, tracked_council) else 0
-        if got != 1:
-            ok = False
-        print(f"  {'✅' if got == 1 else '❌'} {label:<48} caught={bool(got)}  want=True")
-    for label, literal in (
-        ("council attestation gate is pinned", "post-confirmation-attestation"),
-        ("council confirmation evidence is pinned", "platform-authored confirmation record"),
-        ("council re-dispatch linkage is pinned", "re-dispatch-for: <superseded k>"),
-        ("council evidence envelope is pinned", "post-candidate evidence envelope"),
-        ("council pre-seat audit pins are pinned", "predate the first seat dispatch"),
-    ):
-        mutated = dict(council_files)
-        rel = "skills/council/SKILL.md"
-        mutated[rel] = mutated[rel].replace(literal, "removed-contract-literal")
-        got = 1 if check(council_contract, mutated, tracked_council) else 0
-        if got != 1:
-            ok = False
-        print(f"  {'✅' if got == 1 else '❌'} {label:<48} caught={bool(got)}  want=True")
-    displaced = dict(council_files)
-    rel = "skills/council/SKILL.md"
-    displaced[rel] = displaced[rel].replace("post-confirmation-attestation", "removed-contract-literal")
-    displaced[rel] += "\n<!-- post-confirmation-attestation -->\n"
-    got = 1 if check(council_contract, displaced, tracked_council) else 0
-    if got != 1:
-        ok = False
-    print(f"  {'✅' if got == 1 else '❌'} {'out-of-section displaced attestation literal caught':<48} caught={bool(got)}  want=True")
     print("\nself-test: OK" if ok else "\nself-test: FAILED — the checker cannot catch what it claims to")
     return 0 if ok else 1
 
