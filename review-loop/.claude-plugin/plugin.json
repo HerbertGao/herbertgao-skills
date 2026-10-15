@@ -1,6 +1,6 @@
 {
   "name": "review-loop",
-  "version": "2026.8.9",
+  "version": "2026.10.0",
   "description": "Portable adversarial review loop for written artifacts. Code Reviewer and Reality Checker always review; the initial round may add zero or multiple relevant domain experts without a seat cap. Findings are merged, accepted defects receive the smallest fix, and a later round validates the result. Missing catalog or native subagents never blocks execution. A repeated blocker gets one fresh escalation before NOT-CONVERGED. Architecture selection belongs to council.",
   "author": {
     "name": "HerbertGao",

@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2026.8.9",
+  "version": "2026.10.0",
   "description": "Convene catalog specialists on one open decision, including whether to keep, replace, or combine an existing draft. It hears conflicting positions before synthesis and ends with a feasible conclusion. The result does not certify the debate. Use review-loop to fix artifacts.",
   "author": {
     "name": "HerbertGao",
