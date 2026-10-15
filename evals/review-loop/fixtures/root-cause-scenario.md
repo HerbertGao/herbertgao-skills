@@ -10,7 +10,7 @@ After a local patch, round 2 finds the same middleware-ordering defect on the sa
 
 ## Case B — escalation failed
 
-For Case A, a new expert who participated in neither round identifies the middleware composition as the root cause. The main agent applies one materially different in-scope pipeline-order fix, runs focused checks, and CR+RC re-review it. The same authorization blocker remains. Its `root-cause-used` latch is already set.
+For Case A, a new expert who participated in neither round identifies the middleware composition as the root cause. The main agent applies one materially different in-scope pipeline-order fix, runs focused checks, and CR+RC re-review it. The same authorization blocker remains. That escalation has already been used.
 
 ## Case C — same symptom, independent cause
 
@@ -18,7 +18,7 @@ For Case A, a new expert who participated in neither round identifies the middle
 
 ## Case D — escalation produced no applicable approach
 
-For Case A, the one new root-cause expert returns only another middleware-order symptom patch and no materially different applicable approach. The main agent has nothing new it can apply and check. The `root-cause-used` latch is set.
+For Case A, the one new root-cause expert returns only another middleware-order symptom patch and no materially different applicable approach. The main agent has nothing new it can apply and check. That escalation has already been used.
 
 ## Case E — only new approach needs authorization
 

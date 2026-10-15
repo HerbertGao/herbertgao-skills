@@ -1,7 +1,7 @@
 {
   "name": "council",
   "version": "2026.8.9",
-  "description": "Convene agency-agents specialists on one open decision, including architecture selection when a draft exists and the goal is to choose rather than edit. It records four named first positions before synthesis and compares challengers under a neutral brief; missing isolation lowers assurance instead of blocking the debate. Canonical Claude records may reach CONVERGED; weaker runs return unaudited, non-authorizing ADVISORY. Use review-loop to fix artifacts to APPROVE. Requires ~/.agency-agents.",
+  "description": "Convene catalog specialists on one open decision, including whether to keep, replace, or combine an existing draft. It hears conflicting positions before synthesis and ends with a feasible conclusion. The result does not certify the debate. Use review-loop to fix artifacts.",
   "author": {
     "name": "HerbertGao",
     "url": "https://github.com/HerbertGao"

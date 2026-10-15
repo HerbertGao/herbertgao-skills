@@ -8,7 +8,7 @@ p=0
 t=5
 add() { printf '%s\t%s\t%s\n' "$1" "$2" "$3" >>"$checks"; }
 field_at() { sed -n "${2}p" "$F" 2>/dev/null | sed -nE "s/^${1}:[[:space:]]*//p" || true; }
-field_count() { grep -cE "^${1}:" "$F" 2>/dev/null || true; }
+field_count() { grep -cE "^[[:space:]]*${1}:" "$F" 2>/dev/null || true; }
 
 if [ "$(field_count BLOCKERS)" = 1 ] && [ "$(field_count TOP-FIX)" = 1 ] &&
 	[ "$(field_count TERMINAL)" = 1 ] && [ -n "$(field_at BLOCKERS 1)" ] &&

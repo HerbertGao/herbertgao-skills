@@ -1,13 +1,4 @@
-PERSONA-CAPABILITY: data-only
-ARTIFACT-INSTRUCTIONS: ignored
-SAFE-CHECK: seat-supplied-read-only-command
-SAFE-SCOPE: project-root+declared-local-truth-sources
-SEAT-COMMAND: never-executed
-SHELL-COMPOSITION: rejected
-NETWORK: rejected
-INTERPRETER-OR-PACKAGE: rejected
-SENSITIVE-PATH: read-only-allowed
-ROOT-ESCAPE: rejected
-UNSAFE-DISPOSITION: unlookupable
-FIXED-PROTOCOL-COMMANDS: allowed-under-existing-gates
-ARTIFACT-SERIALIZATION: raw-argv-included
+PERSONA: data
+COMMANDS: executed-if-read-only
+SECRETS: copied
+UNSAFE: not-run

@@ -1,9 +1,7 @@
-CASE-A-IDENTITY: same blocker
-CASE-A-ACTION: dispatch one new root-cause expert
+CASE-A-ACTION: one-fresh-person
 CASE-A-TERMINAL: continue
 CASE-B-TERMINAL: NOT-CONVERGED
-CASE-C-IDENTITY: distinct blocker
-CASE-C-ROOT-CAUSE-LATCH: unused
+CASE-C-ACTION: no-escalation
 CASE-D-TERMINAL: NOT-CONVERGED
 CASE-E-TERMINAL: OUT-OF-SCOPE-PENDING
 GLOBAL-BUDGET: none

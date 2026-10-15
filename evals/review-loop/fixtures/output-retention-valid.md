@@ -3,7 +3,7 @@ B: normalize
 C: stop
 D: stop
 R4: waive
-SOFT-CHAIN: merge
-SOFT-ACTION: root-cause
+SOFT-CHAIN: not-merged
+SOFT-ACTION: no-escalation
 HARD-GUARD: keep
 PATCH: simplify

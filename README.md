@@ -11,13 +11,13 @@ HerbertGao 的自托管 AI coding skills 仓库。四个可移植 workflow skill
 | **opsx** | 把 OpenSpec 任务分组交给多个 subagent，主 agent 负责协调和验收 | 想让多个 subagent 分工完成 OpenSpec 任务 |
 | **eli5** | 用大图和少量文字生成一个可离线分享的 HTML 概念解释器 | 想让新人快速理解技术概念、代码路径、Agent、MCP 或协议 |
 
-`eli5` 是独立的学习/分享工具，不参与下述交付流程。用序：先 `council` 定方向，再 `review-loop` 撕产物。只有专家隔离、过程记录、审计和用户确认都完整时，`council` 才会给出 `CONVERGED`；其它能正常讨论的情况只给出不认证、不授权实现的 non-authorizing `ADVISORY`。
+`eli5` 是独立的学习/分享工具，不参与下述交付流程。用序：先 `council` 定方向，再 `review-loop` 撕产物。两份 council 正文一致。结果是决策，does not certify；实现留到之后的明确指令。
 
 路由按**终点**而不是“有没有文档”判断：
 
 | 输入与期望终点 | 使用方式 |
 | --- | --- |
-| 没有草稿，要选择架构 / 技术 | `council` greenfield mode |
+| 没有草稿，要选择架构 / 技术 | `council`，从零选择 |
 | 已有架构草稿，要比较后决定保留 / 替换 / 组合 / 未决 | `council` incumbent-draft mode（不修改草稿） |
 | 已有工件，要找错、修复并迭代到 `APPROVE` | `review-loop` |
 | 既要选架构又要改稿 | 先 `council`；方向未决则停，已决后再交给 `review-loop` |
@@ -26,7 +26,7 @@ HerbertGao 的自托管 AI coding skills 仓库。四个可移植 workflow skill
 
 | 依赖 | 谁需要 | 装法 | 缺了会怎样 |
 | --- | --- | --- | --- |
-| [agency-agents](https://github.com/msitarzewski/agency-agents) | review-loop / council / opsx 的专家/reviewer catalog（自己 clone、控制版本，skill 只读） | `git clone https://github.com/msitarzewski/agency-agents ~/.agency-agents` | review-loop 的 CR/RC 退到内嵌 prompt、跳过可选领域专家并继续；opsx 按自身 fallback；council 凑不齐真专家就 `STOPPED`；eli5 不需要 |
+| [agency-agents](https://github.com/msitarzewski/agency-agents) | review-loop / council / opsx 的专家/reviewer catalog（自己 clone、控制版本，skill 只读） | `git clone https://github.com/msitarzewski/agency-agents ~/.agency-agents` | review-loop 的 CR/RC 用内嵌角色、跳过可选领域专家并继续；opsx 按自身规则；council 缺 catalog 也继续并给出结论；eli5 不需要 |
 | [ponytail](https://github.com/DietrichGebert/ponytail) | 推荐,非必需(主 agent 的 YAGNI 精简纪律) | 见其 README；无插件机制的环境把 persona 粘进全局指令文件 | 主 agent 日常写码失去精简约束；review-loop 已在 CR 与修复规则中内嵌必要的最小实现阶梯，不依赖它 |
 | `openspec-cn` CLI | 仅 opsx | 自行安装(不附带) | opsx 无法运行 |
 
@@ -53,13 +53,13 @@ npx skills add HerbertGao/herbertgao-skills                 # 装到自动检测
 
 ## 通用版 vs plugin 版
 
-一份逻辑、两种封装,差异只在宿主耦合点;共享的辩论、triage、终态语义两版对等。
+一份正文、两种封装。Claude plugin 与通用版的 `SKILL.md` 字节一致，不再保留宿主专用分支。
 
 | Skill | Claude Code plugin 版 | 通用版(npx) |
 | --- | --- | --- |
-| review-loop | 固定两类审查员，必要时再加对口专家和 Codex 复核 | 先审、再小改、再复审；没有专用 subagent 也能继续 |
-| council | 优先使用宿主已有的最强隔离；记录完整并经用户确认后可给出 `CONVERGED` | 四个具名视角、至少两个实质分歧即可运行；缺失隔离能力只降低为 non-authorizing `ADVISORY` |
-| opsx | 用通用实现 subagent | 按任务需要选择专家并分工 |
+| review-loop | 与通用版同一份正文 | 先审、再小改、再复审；没有专用 subagent 也能继续 |
+| council | 与通用版同一份正文 | 讨论后直接给出可行结论；does not certify |
+| opsx | 与通用版同一份正文 | 按任务需要选择专家并分工 |
 | eli5 | 与通用版字节一致；生成单文件 HTML | 同一 host-neutral 工作流 |
 
 语言约定：`council` / `review-loop` / `eli5` 全线英文（避免孪生漂移）；`opsx` 全线中文（配 openspec-cn）。
