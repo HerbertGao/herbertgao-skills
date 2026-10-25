@@ -1,0 +1,20 @@
+{
+  "name": "journey-review",
+  "version": "2026.10.0",
+  "description": "Black-box user journey review that drives the real application, verifies business postconditions, and separates product failures from environment blocks. Includes observation-first execution, four review roles, failure analysis, and an evidence-based terminal report.",
+  "author": {
+    "name": "HerbertGao",
+    "url": "https://github.com/HerbertGao"
+  },
+  "homepage": "https://github.com/HerbertGao/herbertgao-skills",
+  "repository": "https://github.com/HerbertGao/herbertgao-skills",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "skill",
+    "journey-review",
+    "end-to-end",
+    "black-box",
+    "product-review"
+  ]
+}
