@@ -7,7 +7,7 @@
 ```text
 herbertgao-skills/
 ├─ .claude-plugin/marketplace.json   # Claude Code marketplace
-├─ review-loop/ · council/ · opsx/ · eli5/ # Claude Code plugins
+├─ review-loop/ · council/ · opsx/ · eli5/ · journey-review/ # Claude Code plugins
 ├─ skills/                           # 通用版 SOT（npx skills add 安装源）
 ├─ contracts/ · scripts/             # 契约定义 + 发布/同步/校验脚本
 └─ evals/                            # skillgrade 行为 eval（见 evals/SKILLGRADE.md）
@@ -21,6 +21,7 @@ herbertgao-skills/
 | council | [`council/…/SKILL.md`](../council/skills/council/SKILL.md) | [`skills/council/SKILL.md`](../skills/council/SKILL.md) |
 | opsx | [`opsx/…/SKILL.md`](../opsx/skills/openspec-apply-change-subagent/SKILL.md) | [`skills/openspec-apply-change-subagent/SKILL.md`](../skills/openspec-apply-change-subagent/SKILL.md) |
 | eli5 | [`eli5/…/SKILL.md`](../eli5/skills/eli5/SKILL.md) | [`skills/eli5/SKILL.md`](../skills/eli5/SKILL.md) |
+| journey-review | [`journey-review/…/SKILL.md`](../journey-review/skills/journey-review/SKILL.md) | [`skills/journey-review/SKILL.md`](../skills/journey-review/SKILL.md) |
 
 ## 哪份是权威(SOT)
 
@@ -28,11 +29,12 @@ herbertgao-skills/
 - `<plugin>/` 下的 Claude `SKILL.md` 必须与 `skills/<skill>/SKILL.md` 字节一致。宿主专用分支不再保留。
 - `required_verbatim` 只机械守住 evaluator 会匹配的关键字面量，其余语义仍需人工 review。
 - `skills/council/references/incumbent-draft-mode.md` 与 Claude package 中的同名 reference 字节一致。council 没有保证 mode。
+- `skills/journey-review/assets/` 与 `references/` 的模板和故障目录必须同步到 Claude package；通用版与插件版的 `SKILL.md` 仍由契约校验保持字节一致。
 - `skills/review-loop/bin/redact.py` 是共享的**可选** redactor SOT；review-loop / council 的通用、Claude 四份副本必须逐字节一致，但它不再是 review-loop 的通过前置。`skills/council/bin/safe_check.py` 是 council 输出脱敏 wrapper SOT，两份分发副本同样 byte-lock；`check-format.py` fail-closed 校验。
 
 ## 路由边界
 
-路由按终点而非工件是否存在：架构 / 技术选择使用 `council`，即使已有草稿；找错、修复并迭代到 `APPROVE` 使用 `review-loop`。两者都需要时先运行 council。选择未写出之前不改稿。Council 的 incumbent-draft mode 保持草稿只读，结论是一段散文，不写决策记录，也不发终态 token。
+路由按终点而非工件是否存在：架构 / 技术选择使用 `council`，即使已有草稿；找错、修复并迭代到 `APPROVE` 使用 `review-loop`；验证真实用户任务与业务后置条件使用 `journey-review`。`review-loop` 仅在审查范围需要真实业务证据且环境可安全运行时自主调用后者；`JOURNEY-BLOCKED` 是单独披露的验证缺口，不改变 `APPROVE` 的有限含义。前两者都需要时先运行 council。选择未写出之前不改稿。Council 的 incumbent-draft mode 保持草稿只读，结论是一段散文，不写决策记录，也不发终态 token。Journey Review 不以实现或测试推断通过；无法执行或验证时返回 `JOURNEY-BLOCKED`。
 
 ## Subagent 隔离不变量
 

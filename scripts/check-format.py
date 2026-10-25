@@ -348,6 +348,26 @@ def check_council_reference_copies(files: dict) -> list:
     ]
 
 
+def check_journey_support_copies(files: dict) -> list:
+    """Journey worksheets, report template, and failure catalog ship in lockstep."""
+    paths = tuple(
+        (f"skills/journey-review/{rel}", f"journey-review/skills/journey-review/{rel}")
+        for rel in (
+            "assets/expected-output.md",
+            "assets/report-template.md",
+            "references/failure-catalog.md",
+        )
+    )
+    fails = []
+    for source, copy in paths:
+        for path in (source, copy):
+            if path not in files:
+                fails.append(f"missing journey-review support copy: {path}")
+        if source in files and copy in files and files[source] != files[copy]:
+            fails.append(f"journey-review support drift: {copy}")
+    return fails
+
+
 def check_eli5_license_copies(files: dict, expected_sha: str = ELI5_LICENSE_SHA256) -> list:
     """The upstream ELI5 MIT notice must ship unchanged in both distributions."""
     paths = (
@@ -515,7 +535,7 @@ def check_families(contract: dict, files: dict) -> list:
 def load_markdown() -> dict:
     files = {}
     exts = (".md", ".yaml", ".yml", ".json", ".py", ".upstream")  # shipped skill artifacts and metadata
-    for root in ("skills", "council", "opsx", "review-loop", "eli5", "README.md",
+    for root in ("skills", "council", "opsx", "review-loop", "eli5", "journey-review", "README.md",
                  ".claude-plugin", ".agents"):
         path = os.path.join(ROOT, root)
         if os.path.isfile(path):
@@ -617,6 +637,7 @@ def main() -> int:
     fails += check_review_redactor_copies(files)
     fails += check_council_safe_check_copies(files)
     fails += check_council_reference_copies(files)
+    fails += check_journey_support_copies(files)
     fails += check_eli5_license_copies(files)
     fails += check_claude_copies(files)
     fails += check_consumer_surfaces(contract, files)
@@ -759,6 +780,30 @@ def self_test() -> int:
     ]
     for label, fs, expect in reference_cases:
         got = 1 if check_council_reference_copies(fs) else 0
+        if got != expect:
+            ok = False
+        print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")
+
+    journey_support_paths = (
+        "skills/journey-review/assets/expected-output.md",
+        "journey-review/skills/journey-review/assets/expected-output.md",
+        "skills/journey-review/assets/report-template.md",
+        "journey-review/skills/journey-review/assets/report-template.md",
+        "skills/journey-review/references/failure-catalog.md",
+        "journey-review/skills/journey-review/references/failure-catalog.md",
+    )
+    journey_support_cases = [
+        ("journey support copies match", None, False, 0),
+        ("journey support copy missing", 1, False, 1),
+        ("journey support copy drifted", None, True, 1),
+    ]
+    for label, missing, drifted, expect in journey_support_cases:
+        fs = {path: "worksheet" for path in journey_support_paths}
+        if missing is not None:
+            del fs[journey_support_paths[missing]]
+        if drifted:
+            fs[journey_support_paths[1]] = "drifted"
+        got = 1 if check_journey_support_copies(fs) else 0
         if got != expect:
             ok = False
         print(f"  {'✅' if got == expect else '❌'} {label:<48} caught={bool(got)}  want={bool(expect)}")

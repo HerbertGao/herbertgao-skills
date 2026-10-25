@@ -28,6 +28,11 @@
       "name": "eli5",
       "source": "./eli5",
       "description": "Portable visual explainer that turns a complex concept or repository flow into one grounded, self-contained HTML file with large diagrams and few words. Adapted from the Anthropic community ELI5 skill."
+    },
+    {
+      "name": "journey-review",
+      "source": "./journey-review",
+      "description": "Black-box user journey review against product goals. Drives the real application, verifies business postconditions, separates failures from environment blocks, and ends with an evidence-based JOURNEY-PASS, JOURNEY-FAIL, or JOURNEY-BLOCKED result."
     }
   ]
 }

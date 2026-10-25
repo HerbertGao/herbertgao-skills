@@ -103,6 +103,12 @@ Dispatch CR, RC, and any selected initial domain experts with self-contained pro
 
 On later rounds, include the prior triage and actual fixes, but run CR and RC over the resulting artifact—not merely to confirm the fix. Initial domain experts do not rerun by default.
 
+### Optional real-journey evidence
+
+Before `APPROVE`, check whether the agreed scope includes implemented product behavior that requires real UI/API execution and business-postcondition evidence. If so and an authorized, safe runnable environment is available, invoke `journey-review`. Do not add this route to source-only or prose-only reviews, and never replace CR or RC. When such evidence is needed but the environment is unavailable, disclose the coverage gap rather than inventing a product failure.
+
+Consume the complete report, not just its terminal token. Confirmed defects from `JOURNEY-FAIL` enter normal triage. `JOURNEY-PASS` covers only the selected journeys and does not erase CR/RC findings. `JOURNEY-BLOCKED` is a disclosed coverage gap, not a runtime pass or product failure, and does not by itself block the bounded review-loop `APPROVE`. A failed or invalid delegation is not evidence for any journey terminal state. If the user made real execution a separate acceptance gate, keep that gate open while blocked and never claim that review-loop `APPROVE` satisfies it.
+
 ### 2. Triage
 
 Merge all findings into one deduplicated list. The main agent owns the normalized severity:
