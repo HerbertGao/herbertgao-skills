@@ -1,6 +1,6 @@
 {
   "name": "eli5",
-  "version": "2026.10.0",
+  "version": "2026.10.1",
   "description": "Portable visual explainer that turns a complex topic into one self-contained HTML file with large diagrams and few words. It grounds repository-specific explanations in inspected code and verifies the artifact when browser tools are available.",
   "author": {
     "name": "HerbertGao",

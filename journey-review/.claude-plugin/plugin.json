@@ -1,6 +1,6 @@
 {
   "name": "journey-review",
-  "version": "2026.10.0",
+  "version": "2026.10.1",
   "description": "Black-box user journey review that drives the real application, verifies business postconditions, and separates product failures from environment blocks. Includes observation-first execution, four review roles, failure analysis, and an evidence-based terminal report.",
   "author": {
     "name": "HerbertGao",
