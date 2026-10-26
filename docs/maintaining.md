@@ -52,6 +52,26 @@ herbertgao-skills/
 
 缺 catalog、sandbox 或 native worker 不阻断 review-loop 或 council，也不记录路由档。review-loop 首轮仍跑 CR 与 RC；领域专家可选，每个已选角色须由具体触点证明对口。council 能坐谁就坐谁，然后给出结论。opsx 仍按自身规则：解析不出角色就停该组。
 
+
+## 发版
+
+对齐 [pi-extensions](https://github.com/HerbertGao/pi-extensions) 的「版本 PR → 合入发布」流程；本仓库是 Claude plugins/skills，不用 changesets/npm。
+
+1. **切开版本 PR**（任选其一）:
+   - `scripts/release.sh 2026.10.2`
+   - `gh workflow run release.yml -f version=2026.10.2`
+   - GitHub Actions UI 里对 `release` 工作流 `Run workflow`，填 `N.N.N`
+2. CI 在分支 `release/vN.N.N` 上跑 [`scripts/bump-version.sh`](../scripts/bump-version.sh)，开/更新 PR，标题 `chore(release): 版本统一到 N.N.N`。
+3. PR 绿灯后合入 `main`。合入后 `release` 工作流会：
+   - 校验 format contract、marketplace↔plugin 一致性、manifest 版本 == `N.N.N`
+   - 在 bump commit 上打 annotated tag `vN.N.N`
+   - **直接正式发布** GitHub Release（不再开 draft），notes 按 feat/fix/其他自动分组
+4. 本地预览 bump 不推送：`scripts/release.sh 2026.10.2 --dry-run`
+
+不要再本地 `git tag` + `git push --atomic`。若 tag 已存在于 origin，准备步骤会拒绝重复版本。
+
+相关脚本：[`scripts/bump-version.sh`](../scripts/bump-version.sh)、[`scripts/validate-marketplaces.sh`](../scripts/validate-marketplaces.sh)、[`scripts/release.sh`](../scripts/release.sh)、[`.github/workflows/release.yml`](../.github/workflows/release.yml)。
+
 ## ELI5 上游同步
 
 `skills/eli5/SKILL.md` 的 metadata 同时固定上游 commit 与 blob；两份 `LICENSE.upstream` 必须存在、字节一致且保留原 MIT notice。`.github/workflows/eli5-upstream.yml` 每周比较上游 `main` blob，变化时按新 blob 创建 issue，只提醒人工 review，不自动更新提示词或许可证。
