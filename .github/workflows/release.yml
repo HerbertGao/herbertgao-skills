@@ -176,12 +176,19 @@ jobs:
             source=tag
           else
             # main push: only release commits cut a version.
-            # Squash merges keep the PR title and may append (#N).
+            # Squash/rebase keep the PR title (may append (#N)). Merge commits
+            # usually look like "Merge pull request #N from .../release/vN.N.N".
             subject=$(git log -1 --pretty=%s)
             ver=$(
               printf '%s\n' "$subject" |
                 sed -nE 's/^chore\(release\): 版本统一到 ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p'
             )
+            if [[ -z "$ver" ]]; then
+              ver=$(
+                printf '%s\n' "$subject" |
+                  sed -nE 's/.*\/release\/v([0-9]+\.[0-9]+\.[0-9]+).*/\1/p'
+              )
+            fi
             if [[ -z "$ver" ]]; then
               echo "skip=true" >> "$GITHUB_OUTPUT"
               echo "Not a release commit ($subject) — nothing to publish"

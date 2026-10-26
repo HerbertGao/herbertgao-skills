@@ -62,7 +62,7 @@ herbertgao-skills/
    - `gh workflow run release.yml -f version=2026.10.2`
    - GitHub Actions UI 里对 `release` 工作流 `Run workflow`，填 `N.N.N`
 2. CI 在分支 `release/vN.N.N` 上跑 [`scripts/bump-version.sh`](../scripts/bump-version.sh)，开/更新 PR，标题 `chore(release): 版本统一到 N.N.N`。
-3. PR 绿灯后合入 `main`。合入后 `release` 工作流会：
+3. PR 绿灯后合入 `main`（推荐 squash，保留 `chore(release): …` 标题；merge commit 只要来源分支是 `release/vN.N.N` 也可识别）。合入后 `release` 工作流会：
    - 校验 format contract、marketplace↔plugin 一致性、manifest 版本 == `N.N.N`
    - 在 bump commit 上打 annotated tag `vN.N.N`
    - **直接正式发布** GitHub Release（不再开 draft），notes 按 feat/fix/其他自动分组
