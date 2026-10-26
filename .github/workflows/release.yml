@@ -1,58 +1,229 @@
 name: release
 
-# Triggered by a version tag pushed by scripts/release.sh. The tag commit
-# already carries synced versions. This workflow verifies them, then opens a
-# draft release with an auto-generated skeleton to finish and publish.
+# pi-extensions-style flow, adapted for Claude plugins (no changesets/npm):
+# 1) workflow_dispatch(version) opens/updates a release PR that only bumps
+#    manifests via scripts/bump-version.sh.
+# 2) Merging that PR to main creates annotated tag vN.N.N and publishes a
+#    GitHub Release (not a draft) with auto-generated notes.
+# 3) Pushing a version tag remains a recovery/publish path.
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (N.N.N, no leading v)"
+        required: true
+        type: string
   push:
+    branches: [main]
     tags:
       # Version tags only; vendor-x and v-old cannot trigger verification.
       - "v[0-9]*"
 
 permissions:
-  # Create the GitHub release.
-  contents: write
+  contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
-  # Never cancel a half-done release.
+  # Isolate prepare vs publish; never cancel a half-done release.
+  group: release-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  draft-release:
+  prepare-release:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      # actions/checkout v4
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          # Full history and tags for the changelog range.
           fetch-depth: 0
-          persist-credentials: false
+          # Need the token to push the release branch.
+          persist-credentials: true
+          ref: main
 
-      - name: Format contract (a drifted literal is a gate that never fires)
-        # No upstream clone: a third-party rename cannot break releases. The
-        # catalog question belongs to check.yml's scheduled canary.
+      - name: Validate version input
+        id: ver
+        env:
+          RAW: ${{ inputs.version }}
         run: |
+          set -euo pipefail
+          ver="${RAW#v}"
+          if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::invalid version '$RAW' (want N.N.N)"
+            exit 1
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "tag=v$ver" >> "$GITHUB_OUTPUT"
+          echo "branch=release/v$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Reject versions that already have a tag
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null 2>&1 ||
+            git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::tag $TAG already exists — pick a new version"
+            exit 1
+          fi
+
+      - name: Format contract + marketplace consistency
+        run: |
+          set -euo pipefail
           scripts/check-format.py --self-test
           SKIP_CATALOG_CHECK=1 scripts/check-format.py
           bash evals/review-loop/graders/self-test.sh
           bash evals/council/graders/self-test.sh
+          bash scripts/validate-marketplaces.sh
 
-      - name: Resolve version from tag
+      - name: Bump manifests on release branch
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+          BRANCH: ${{ steps.ver.outputs.branch }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B "$BRANCH" origin/main
+          scripts/bump-version.sh "$VER"
+
+          files=(*/.claude-plugin/plugin.json .claude-plugin/marketplace.json)
+          # Fail closed: every manifest must match the requested version.
+          for f in "${files[@]}"; do
+            if [[ "$f" == ".claude-plugin/marketplace.json" ]]; then
+              got=$(jq -r '.metadata.version // empty' "$f")
+            else
+              got=$(jq -r '.version // empty' "$f")
+            fi
+            [[ "$got" == "$VER" ]] || {
+              echo "::error file=$f::version '$got' != '$VER'"
+              exit 1
+            }
+          done
+
+          git add -- "${files[@]}"
+          if git diff --cached --quiet; then
+            echo "::error::nothing to bump (already $VER everywhere). If a prior release PR stalled, close it or pick a new version."
+            exit 1
+          fi
+          git commit -m "chore(release): 版本统一到 $VER"
+          git push -u origin "HEAD:refs/heads/$BRANCH" --force-with-lease
+
+      - name: Open or update release PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VER: ${{ steps.ver.outputs.version }}
+          BRANCH: ${{ steps.ver.outputs.branch }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          title="chore(release): 版本统一到 ${VER}"
+          body=$(cat <<MD
+          ## Release ${TAG}
+
+          This PR only syncs plugin + marketplace manifests to \`${VER}\` via \`scripts/bump-version.sh\`.
+
+          **Merging to \`main\` will:**
+          1. Create annotated tag \`${TAG}\` on the bump commit
+          2. Publish a GitHub Release (not a draft) with auto-generated notes
+
+          ### Operator
+          - Cut: \`gh workflow run release.yml -f version=${VER}\` or \`scripts/release.sh ${VER}\`
+          - Review this PR, merge when green
+          - Do not push tags locally
+          MD
+          )
+          # Trim the leading spaces that keep this step readable in YAML.
+          body=$(printf '%s\n' "$body" | sed 's/^[[:space:]]*//')
+
+          pr=$(gh pr list --head "$BRANCH" --base main --state open --json number -q '.[0].number // empty')
+          if [[ -n "$pr" ]]; then
+            echo "updating existing PR #$pr"
+            gh pr edit "$pr" --title "$title" --body "$body"
+            gh pr view "$pr" --json url -q .url
+          else
+            gh pr create --base main --head "$BRANCH" --title "$title" --body "$body"
+          fi
+
+  publish-release:
+    if: >-
+      github.event_name == 'push' && (
+        startsWith(github.ref, 'refs/tags/v') ||
+        (github.ref == 'refs/heads/main' &&
+         contains(github.event.head_commit.message, 'chore(release):'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Full history and tags for the changelog range + tag creation.
+          fetch-depth: 0
+          # Push the annotated tag when publishing from main.
+          persist-credentials: true
+
+      - name: Resolve version
         id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            ver="${GITHUB_REF_NAME#v}"
+            source=tag
+          else
+            # main push: only release commits cut a version.
+            # Squash/rebase keep the PR title (may append (#N)). Merge commits
+            # usually look like "Merge pull request #N from .../release/vN.N.N".
+            subject=$(git log -1 --pretty=%s)
+            ver=$(
+              printf '%s\n' "$subject" |
+                sed -nE 's/^chore\(release\): 版本统一到 ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p'
+            )
+            if [[ -z "$ver" ]]; then
+              ver=$(
+                printf '%s\n' "$subject" |
+                  sed -nE 's/.*\/release\/v([0-9]+\.[0-9]+\.[0-9]+).*/\1/p'
+              )
+            fi
+            if [[ -z "$ver" ]]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "Not a release commit ($subject) — nothing to publish"
+              exit 0
+            fi
+            source=commit
+          fi
+          if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::invalid version '$ver'"
+            exit 1
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "tag=v$ver" >> "$GITHUB_OUTPUT"
+          echo "source=$source" >> "$GITHUB_OUTPUT"
 
-      - name: Verify every manifest matches the tag
+      - name: Format contract + marketplace consistency
+        if: steps.ver.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          scripts/check-format.py --self-test
+          SKIP_CATALOG_CHECK=1 scripts/check-format.py
+          bash evals/review-loop/graders/self-test.sh
+          bash evals/council/graders/self-test.sh
+          bash scripts/validate-marketplaces.sh
+
+      - name: Verify every manifest matches the version
+        if: steps.ver.outputs.skip != 'true'
         shell: bash
         env:
-          # Pass via env; never interpolate into the script.
           VER: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
           shopt -s nullglob
-          plugins=(
-            */.claude-plugin/plugin.json
-          )
+          plugins=(*/.claude-plugin/plugin.json)
           if [[ ${#plugins[@]} -eq 0 ]]; then
             echo "::error::no plugin manifests matched"
             exit 1
@@ -63,7 +234,7 @@ jobs:
             if [[ "$got" == "$VER" ]]; then
               echo "ok  $f = $got"
             else
-              echo "::error file=$f::version '$got' != tag '$VER'"
+              echo "::error file=$f::version '$got' != '$VER'"
               rc=1
             fi
           done
@@ -75,27 +246,52 @@ jobs:
             echo "::error file=$mf::metadata.version mismatch"
             rc=1
           fi
-
           if [[ $rc -ne 0 ]]; then
             echo "::error::release manifest verification failed"
-            echo "Fix errors and rerun scripts/release.sh"
             exit 1
           fi
 
-      - name: Build draft notes
+      - name: Ensure annotated tag exists
+        if: steps.ver.outputs.skip != 'true'
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+          SOURCE: ${{ steps.ver.outputs.source }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "tag $TAG already present locally"
+          elif git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            git fetch origin "refs/tags/$TAG:refs/tags/$TAG"
+            echo "fetched existing tag $TAG"
+          else
+            # Tag the release bump commit (HEAD on main, or the tagged commit
+            # when this job was already started by a tag push).
+            git tag -a "$TAG" -m "$TAG" HEAD
+            git push origin "refs/tags/$TAG"
+            echo "created and pushed $TAG"
+          fi
+
+          # When we just created the tag from main, GITHUB_TOKEN pushes do not
+          # re-trigger workflows — publish in this same job below.
+
+      - name: Build release notes
+        if: steps.ver.outputs.skip != 'true'
         shell: bash
         env:
-          REF: ${{ github.ref_name }}
+          TAG: ${{ steps.ver.outputs.tag }}
           VER: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
           prev=$(
-            git describe --tags --abbrev=0 "${REF}^" 2>/dev/null || true
+            git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true
           )
           if [[ -n "$prev" ]]; then
-            range=( "${prev}..${REF}" )
+            range=( "${prev}..${TAG}" )
           else
-            range=( "$REF" )
+            range=( "$TAG" )
           fi
           sec() { # <heading> <grep-ere>
             local body
@@ -104,47 +300,43 @@ jobs:
                 "${range[@]}" 2>/dev/null |
                 grep -E "$2" || true
             )
-            # An empty section must return 0; otherwise `set -e` aborts.
             if [[ -n "$body" ]]; then
               printf '### %s\n%s\n\n' "$1" "$body"
             fi
           }
           {
-            echo "## ${REF}"
-            echo
-            echo "<!-- 草稿：补技术叙事后再 Publish。" \
-              "提交按类型分组（范围 ${range[*]}）。 -->"
+            echo "## ${TAG}"
             echo
             sec "Features" '^- feat'
             sec "Fixes" '^- fix'
             sec "其他 (chore / docs / refactor / ci / build / perf)" \
               '^- (chore|docs|refactor|ci|build|perf|style|test)'
             echo "---"
-            echo "_自动草稿（.github/workflows/release.yml）；" \
+            echo "_自动发布（.github/workflows/release.yml）；" \
               "plugin / marketplace 版本统一到 ${VER}。_"
           } > notes.md
           echo "----- notes.md -----"
           cat notes.md
 
-      - name: Create or update draft release
+      - name: Publish GitHub Release
+        if: steps.ver.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          REF: ${{ github.ref_name }}
+          TAG: ${{ steps.ver.outputs.tag }}
         run: |
           set -euo pipefail
-          # Probe once and branch on its exit code. An empty result must not be
-          # mistaken for a published release.
+          # Probe once. Never demote a published release back to draft.
           if draft=$(
-            gh release view "$REF" --json isDraft -q .isDraft 2>/dev/null
+            gh release view "$TAG" --json isDraft -q .isDraft 2>/dev/null
           ); then
             if [[ "$draft" == "true" ]]; then
-              echo "draft $REF exists — refreshing notes"
-              gh release edit "$REF" --draft --notes-file notes.md
+              echo "draft $TAG exists — publishing with refreshed notes"
+              gh release edit "$TAG" --draft=false --notes-file notes.md
             else
-              echo "::notice::release $REF is already published"
+              echo "::notice::release $TAG is already published — leaving notes untouched"
             fi
           else
-            echo "creating draft release $REF"
-            gh release create "$REF" \
-              --title "$REF" --draft --notes-file notes.md
+            echo "creating published release $TAG"
+            gh release create "$TAG" \
+              --title "$TAG" --notes-file notes.md
           fi
