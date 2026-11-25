@@ -2,8 +2,9 @@
 # Manual / recovery release via GitHub Actions (pi-extensions-style).
 #
 # Normal flow: merge feat/fix (etc.) to main and CI auto-opens or refreshes the
-# single release PR. Use this script only to pin a version or recover a stalled
-# release. It dispatches prepare-release with the given version; CI bumps
+# release PR (CalVer YEAR.MONTH.SEQ in Asia/Shanghai). Use this script only to
+# pin a version or recover a stalled release. It dispatches prepare-release with
+# the given version; CI bumps
 # manifests via bump-version.sh. Merging that PR publishes annotated tag vN.N.N.
 #
 # Usage: scripts/release.sh <version> [--dry-run]

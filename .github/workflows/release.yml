@@ -3,7 +3,7 @@ name: release
 # pi-extensions-style flow, adapted for Claude plugins (no changesets/npm):
 # 1) After releasable commits land on main, prepare-release runs checks and
 #    opens or updates a single release PR that only bumps manifests via
-#    scripts/bump-version.sh (patch bump from latest tag by default).
+#    scripts/bump-version.sh (CalVer YEAR.MONTH.SEQ, Asia/Shanghai).
 # 2) workflow_dispatch(version) is optional manual/recovery: same PR path, pin N.N.N.
 # 3) Merging that PR to main creates annotated tag vN.N.N and publishes a
 #    GitHub Release (not a draft) with auto-generated notes.
@@ -26,8 +26,8 @@ permissions:
   contents: read
 
 concurrency:
-  # Serialize auto/manual prepare on main; never cancel a half-done publish.
-  group: release-${{ github.event_name }}-${{ github.ref }}
+  # One queue per ref: auto + manual prepare on main share a group; tag publishes differ by ref.
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      !contains(github.event.head_commit.message, 'chore(release):')
+      !startsWith(split(github.event.head_commit.message, '\n')[0], 'chore(release):')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -210,7 +210,7 @@ jobs:
       github.event_name == 'push' && (
         startsWith(github.ref, 'refs/tags/v') ||
         (github.ref == 'refs/heads/main' &&
-         contains(github.event.head_commit.message, 'chore(release):'))
+         startsWith(split(github.event.head_commit.message, '\n')[0], 'chore(release):'))
       )
     runs-on: ubuntu-latest
     permissions:
