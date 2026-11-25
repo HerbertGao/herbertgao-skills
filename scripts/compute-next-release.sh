@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Decide the next release version for auto prepare-release (push to main).
-# CalVer YEAR.MONTH.SEQ in Asia/Shanghai; writes GITHUB_OUTPUT:
-# skip, version, branch, tag, reason.
+# CalVer YEAR.MONTH.SEQ in Asia/Shanghai (month unpadded, matching repo tags);
+# writes GITHUB_OUTPUT: skip, version, branch, tag, reason.
 set -euo pipefail
 
 out="${GITHUB_OUTPUT:?GITHUB_OUTPUT must be set}"
@@ -10,16 +10,17 @@ write_out() {
   printf '%s\n' "$@" >>"$out"
 }
 
-calver_now() {
-  TZ=Asia/Shanghai date +%Y.%m
-}
-
 calver_year() {
   TZ=Asia/Shanghai date +%Y
 }
 
-calver_month_padded() {
-  TZ=Asia/Shanghai date +%m
+# Unpadded month (GNU date on ubuntu-latest): 2026.8.9 not 2026.08.9
+calver_month() {
+  TZ=Asia/Shanghai date +%-m
+}
+
+calver_now() {
+  printf '%s.%s\n' "$(calver_year)" "$(calver_month)"
 }
 
 version_in_current_calver_month() {
@@ -27,20 +28,18 @@ version_in_current_calver_month() {
   IFS='.' read -r vy vm _vs <<<"$ver"
   [[ -n "$vy" && -n "$vm" ]] || return 1
   vm=$((10#$vm))
-  local cm
-  cm=$((10#$(calver_month_padded)))
-  [[ "$vy" == "$(calver_year)" && "$vm" -eq "$cm" ]]
+  [[ "$vy" == "$(calver_year)" && "$vm" -eq $((10#$(calver_month))) ]]
 }
 
 # Next SEQ from a base version (latest tag or in-month manifest).
 compute_next_from_base() {
   local base_ver="${1:-}"
-  local cy cm_padded
+  local cy cm_out
   cy="$(calver_year)"
-  cm_padded="$(calver_month_padded)"
+  cm_out="$(calver_month)"
 
   if [[ -z "$base_ver" ]]; then
-    printf '%s.%s.0\n' "$cy" "$cm_padded"
+    printf '%s.%s.0\n' "$cy" "$cm_out"
     return 0
   fi
 
@@ -48,12 +47,12 @@ compute_next_from_base() {
   IFS='.' read -r by bm bs <<<"$base_ver"
   [[ -n "$by" && -n "$bm" && -n "$bs" ]] || return 1
   bm=$((10#$bm))
-  local cm_num=$((10#$cm_padded))
+  local cm_num=$((10#$(calver_month)))
 
   if [[ "$by" == "$cy" && "$bm" -eq "$cm_num" ]]; then
-    printf '%s.%s.%s\n' "$cy" "$cm_padded" "$((bs + 1))"
+    printf '%s.%s.%s\n' "$cy" "$cm_out" "$((bs + 1))"
   else
-    printf '%s.%s.0\n' "$cy" "$cm_padded"
+    printf '%s.%s.0\n' "$cy" "$cm_out"
   fi
 }
 
@@ -100,7 +99,7 @@ expected_ver="$(compute_next_from_base "$base_ver")" || {
 }
 
 ver="$expected_ver"
-reason="CalVer $(calver_now).SEQ from ${latest_tag:-${base_ver:-month start}} -> $ver (Asia/Shanghai)"
+reason="CalVer $(calver_now).SEQ from ${latest_tag:-${base_ver:-month start}} -> $ver (Asia/Shanghai, unpadded month)"
 
 open_branch=""
 if command -v gh >/dev/null 2>&1 && [[ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
