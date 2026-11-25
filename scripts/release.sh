@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Cut a release via GitHub Actions (pi-extensions-style), not local tag+push.
+# Manual / recovery release via GitHub Actions (pi-extensions-style).
 #
-# Dispatches .github/workflows/release.yml with the given version. CI opens or
-# updates a release PR that bumps manifests via bump-version.sh. Merging that
-# PR to main creates annotated tag vN.N.N and publishes a GitHub Release.
+# Normal flow: merge feat/fix (etc.) to main and CI auto-opens or refreshes the
+# release PR (CalVer YEAR.MONTH.SEQ in Asia/Shanghai). Use this script only to
+# pin a version or recover a stalled release. It dispatches prepare-release with
+# the given version; CI bumps
+# manifests via bump-version.sh. Merging that PR publishes annotated tag vN.N.N.
 #
 # Usage: scripts/release.sh <version> [--dry-run]
 #   scripts/release.sh 2026.10.2            # dispatch prepare-release workflow
@@ -103,7 +105,7 @@ fi
 echo "release: dispatching prepare-release for $tag on $repo_slug"
 gh workflow run release.yml --repo "$repo_slug" -f "version=$ver"
 
-echo "release: workflow dispatched."
+echo "release: manual prepare-release dispatched (auto PRs still open on ordinary main merges)."
 echo "  watch:  gh run list --repo $repo_slug --workflow=release.yml --limit 3"
 echo "  merge the release PR when green; merging publishes $tag (not a draft)."
 echo "  releases: https://github.com/$repo_slug/releases"

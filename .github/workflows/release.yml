@@ -1,11 +1,14 @@
 name: release
 
 # pi-extensions-style flow, adapted for Claude plugins (no changesets/npm):
-# 1) workflow_dispatch(version) opens/updates a release PR that only bumps
-#    manifests via scripts/bump-version.sh.
-# 2) Merging that PR to main creates annotated tag vN.N.N and publishes a
+# 1) After releasable commits land on main, prepare-release runs checks and
+#    opens or updates a single release PR that only bumps manifests via
+#    scripts/bump-version.sh (CalVer YEAR.MONTH.SEQ, Asia/Shanghai).
+# 2) workflow_dispatch(version) is optional manual/recovery: same PR path, pin N.N.N.
+# 3) Merging that PR to main creates annotated tag vN.N.N and publishes a
 #    GitHub Release (not a draft) with auto-generated notes.
-# 3) Pushing a version tag remains a recovery/publish path.
+# 4) Pushing a version tag remains a recovery/publish path.
+# Never auto-merge the release PR.
 on:
   workflow_dispatch:
     inputs:
@@ -23,13 +26,41 @@ permissions:
   contents: read
 
 concurrency:
-  # Isolate prepare vs publish; never cancel a half-done release.
-  group: release-${{ github.event_name }}-${{ github.ref }}
+  # One queue per ref: auto + manual prepare on main share a group; tag publishes differ by ref.
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  # Gate manifest bump on the same checks as merge (like pi-extensions validate).
+  validate-for-release:
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      !(
+        startsWith(split(github.event.head_commit.message, '\n')[0], 'chore(release):') ||
+        contains(split(github.event.head_commit.message, '\n')[0], '/release/v')
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Format contract + marketplace consistency
+        run: |
+          set -euo pipefail
+          scripts/check-format.py --self-test
+          SKIP_CATALOG_CHECK=1 scripts/check-format.py
+          bash evals/review-loop/graders/self-test.sh
+          bash evals/council/graders/self-test.sh
+          bash scripts/validate-marketplaces.sh
+
   prepare-release:
-    if: github.event_name == 'workflow_dispatch'
+    needs: validate-for-release
+    if: >-
+      always() && (
+        github.event_name == 'workflow_dispatch' ||
+        (needs.validate-for-release.result == 'success')
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -42,22 +73,43 @@ jobs:
           persist-credentials: true
           ref: main
 
-      - name: Validate version input
+      - name: Resolve target version
         id: ver
         env:
-          RAW: ${{ inputs.version }}
+          DISPATCH_VER: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          ver="${RAW#v}"
-          if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::invalid version '$RAW' (want N.N.N)"
-            exit 1
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            ver="${DISPATCH_VER#v}"
+            if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::invalid version '$DISPATCH_VER' (want N.N.N)"
+              exit 1
+            fi
+            {
+              echo "skip=false"
+              echo "version=$ver"
+              echo "branch=release/v$ver"
+              echo "tag=v$ver"
+              echo "mode=manual"
+              echo "reason=workflow_dispatch version pin"
+            } >>"$GITHUB_OUTPUT"
+          else
+            bash scripts/compute-next-release.sh
+            echo "mode=auto" >>"$GITHUB_OUTPUT"
           fi
-          echo "version=$ver" >> "$GITHUB_OUTPUT"
-          echo "tag=v$ver" >> "$GITHUB_OUTPUT"
-          echo "branch=release/v$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Nothing to release
+        if: steps.ver.outputs.skip == 'true'
+        env:
+          REASON: ${{ steps.ver.outputs.reason }}
+        run: |
+          set -euo pipefail
+          echo "prepare-release skipped: ${REASON:-unknown}"
+          exit 0
 
       - name: Reject versions that already have a tag
+        if: steps.ver.outputs.skip != 'true'
         env:
           TAG: ${{ steps.ver.outputs.tag }}
         run: |
@@ -69,6 +121,7 @@ jobs:
           fi
 
       - name: Format contract + marketplace consistency
+        if: steps.ver.outputs.skip != 'true' && steps.ver.outputs.mode == 'manual'
         run: |
           set -euo pipefail
           scripts/check-format.py --self-test
@@ -78,6 +131,7 @@ jobs:
           bash scripts/validate-marketplaces.sh
 
       - name: Bump manifests on release branch
+        if: steps.ver.outputs.skip != 'true'
         env:
           VER: ${{ steps.ver.outputs.version }}
           BRANCH: ${{ steps.ver.outputs.branch }}
@@ -87,6 +141,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          git fetch origin main
           git checkout -B "$BRANCH" origin/main
           scripts/bump-version.sh "$VER"
 
@@ -113,11 +168,14 @@ jobs:
           git push -u origin "HEAD:refs/heads/$BRANCH" --force-with-lease
 
       - name: Open or update release PR
+        if: steps.ver.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VER: ${{ steps.ver.outputs.version }}
           BRANCH: ${{ steps.ver.outputs.branch }}
           TAG: ${{ steps.ver.outputs.tag }}
+          MODE: ${{ steps.ver.outputs.mode }}
+          REASON: ${{ steps.ver.outputs.reason }}
         run: |
           set -euo pipefail
           title="chore(release): 版本统一到 ${VER}"
@@ -130,13 +188,15 @@ jobs:
           1. Create annotated tag \`${TAG}\` on the bump commit
           2. Publish a GitHub Release (not a draft) with auto-generated notes
 
+          **Version policy (${MODE}):** ${REASON}
+
           ### Operator
-          - Cut: \`gh workflow run release.yml -f version=${VER}\` or \`scripts/release.sh ${VER}\`
-          - Review this PR, merge when green
+          - Normal: merge \`feat\`/\`fix\` (etc.) to \`main\`; CI opens or refreshes this release PR (one at a time).
+          - Recovery / pin: \`gh workflow run release.yml -f version=${VER}\` or \`scripts/release.sh ${VER}\`
+          - Review this PR, merge when green — **do not auto-merge**.
           - Do not push tags locally
           MD
           )
-          # Trim the leading spaces that keep this step readable in YAML.
           body=$(printf '%s\n' "$body" | sed 's/^[[:space:]]*//')
 
           pr=$(gh pr list --head "$BRANCH" --base main --state open --json number -q '.[0].number // empty')
@@ -153,7 +213,10 @@ jobs:
       github.event_name == 'push' && (
         startsWith(github.ref, 'refs/tags/v') ||
         (github.ref == 'refs/heads/main' &&
-         contains(github.event.head_commit.message, 'chore(release):'))
+          (
+            startsWith(split(github.event.head_commit.message, '\n')[0], 'chore(release):') ||
+            contains(split(github.event.head_commit.message, '\n')[0], '/release/v')
+          ))
       )
     runs-on: ubuntu-latest
     permissions:
