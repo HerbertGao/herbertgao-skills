@@ -55,22 +55,21 @@ herbertgao-skills/
 
 ## 发版
 
-对齐 [pi-extensions](https://github.com/HerbertGao/pi-extensions) 的「版本 PR → 合入发布」流程；本仓库是 Claude plugins/skills，不用 changesets/npm。
+对齐 [pi-extensions](https://github.com/HerbertGao/pi-extensions) 的「合入可发版改动 → 自动版本 PR → 人工合入发布」；本仓库是 Claude plugins/skills，不用 changesets/npm。
 
-1. **切开版本 PR**（任选其一）:
-   - `scripts/release.sh 2026.10.2`
-   - `gh workflow run release.yml -f version=2026.10.2`
-   - GitHub Actions UI 里对 `release` 工作流 `Run workflow`，填 `N.N.N`
-2. CI 在分支 `release/vN.N.N` 上跑 [`scripts/bump-version.sh`](../scripts/bump-version.sh)，开/更新 PR，标题 `chore(release): 版本统一到 N.N.N`。
-3. PR 绿灯后合入 `main`（推荐 squash，保留 `chore(release): …` 标题；merge commit 只要来源分支是 `release/vN.N.N` 也可识别）。合入后 `release` 工作流会：
+1. **日常**：把 `feat` / `fix` 等（非 `chore(release):`）合入 `main`。`release` 工作流在契约/marketplace 检查通过后，用 [`scripts/compute-next-release.sh`](../scripts/compute-next-release.sh) 从**最新 `v*` tag 做 patch bump**（若已有打开的 `release/v*` PR 则复用该分支版本），在 `release/vN.N.N` 上跑 [`scripts/bump-version.sh`](../scripts/bump-version.sh)，**开或更新唯一一个** PR，标题 `chore(release): 版本统一到 N.N.N`。
+2. **人工审阅并合入版本 PR**（不要 auto-merge）。合入后 `publish-release` 会：
    - 校验 format contract、marketplace↔plugin 一致性、manifest 版本 == `N.N.N`
    - 在 bump commit 上打 annotated tag `vN.N.N`
-   - **直接正式发布** GitHub Release（不再开 draft），notes 按 feat/fix/其他自动分组
+   - **直接正式发布** GitHub Release（非 draft），notes 按 feat/fix/其他自动分组
+3. **恢复 / 指定版本**（与自动 PR 共用同一路径，不打架）:
+   - `scripts/release.sh 2026.10.2`
+   - `gh workflow run release.yml -f version=2026.10.2`
 4. 本地预览 bump 不推送：`scripts/release.sh 2026.10.2 --dry-run`
 
 不要再本地 `git tag` + `git push --atomic`。若 tag 已存在于 origin，准备步骤会拒绝重复版本。
 
-相关脚本：[`scripts/bump-version.sh`](../scripts/bump-version.sh)、[`scripts/validate-marketplaces.sh`](../scripts/validate-marketplaces.sh)、[`scripts/release.sh`](../scripts/release.sh)、[`.github/workflows/release.yml`](../.github/workflows/release.yml)。
+相关脚本：[`scripts/bump-version.sh`](../scripts/bump-version.sh)、[`scripts/compute-next-release.sh`](../scripts/compute-next-release.sh)、[`scripts/validate-marketplaces.sh`](../scripts/validate-marketplaces.sh)、[`scripts/release.sh`](../scripts/release.sh)、[`.github/workflows/release.yml`](../.github/workflows/release.yml)。
 
 ## ELI5 上游同步
 
