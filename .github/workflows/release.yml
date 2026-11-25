@@ -31,15 +31,43 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Classify main pushes by commit subject only (not squash body). Job-level
+  # expressions cannot call split(); git log %s matches publish-release parsing.
+  classify-main-push:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      is_release_commit: ${{ steps.classify.outputs.is_release_commit }}
+      subject: ${{ steps.classify.outputs.subject }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Classify commit subject
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+          subject=$(git log -1 --pretty=%s)
+          is_release=false
+          if [[ "$subject" == chore\(release\):* ]]; then
+            is_release=true
+          elif [[ "$subject" == *'/release/v'* ]]; then
+            is_release=true
+          fi
+          {
+            echo "subject=$subject"
+            echo "is_release_commit=$is_release"
+          } >>"$GITHUB_OUTPUT"
+
   # Gate manifest bump on the same checks as merge (like pi-extensions validate).
   validate-for-release:
+    needs: classify-main-push
     if: >-
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      !(
-        startsWith(split(github.event.head_commit.message, '\n')[0], 'chore(release):') ||
-        contains(split(github.event.head_commit.message, '\n')[0], '/release/v')
-      )
+      always() &&
+      !cancelled() &&
+      needs.classify-main-push.result == 'success' &&
+      needs.classify-main-push.outputs.is_release_commit != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -55,9 +83,10 @@ jobs:
           bash scripts/validate-marketplaces.sh
 
   prepare-release:
-    needs: validate-for-release
+    needs: [classify-main-push, validate-for-release]
     if: >-
-      always() && (
+      always() &&
+      !cancelled() && (
         github.event_name == 'workflow_dispatch' ||
         (needs.validate-for-release.result == 'success')
       )
@@ -209,14 +238,17 @@ jobs:
           fi
 
   publish-release:
+    needs: classify-main-push
     if: >-
+      always() &&
+      !cancelled() &&
       github.event_name == 'push' && (
         startsWith(github.ref, 'refs/tags/v') ||
-        (github.ref == 'refs/heads/main' &&
-          (
-            startsWith(split(github.event.head_commit.message, '\n')[0], 'chore(release):') ||
-            contains(split(github.event.head_commit.message, '\n')[0], '/release/v')
-          ))
+        (
+          github.ref == 'refs/heads/main' &&
+          needs.classify-main-push.result == 'success' &&
+          needs.classify-main-push.outputs.is_release_commit == 'true'
+        )
       )
     runs-on: ubuntu-latest
     permissions:

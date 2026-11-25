@@ -57,7 +57,7 @@ herbertgao-skills/
 
 对齐 [pi-extensions](https://github.com/HerbertGao/pi-extensions) 的「合入可发版改动 → 自动版本 PR → 人工合入发布」；本仓库是 Claude plugins/skills，不用 changesets/npm。
 
-1. **日常**：把 `feat` / `fix` 等（非 release 合入：subject 不以 `chore(release):` 开头且不含 `.../release/v` 的 merge subject）合入 `main`。`release` 工作流在契约/marketplace 检查通过后，用 [`scripts/compute-next-release.sh`](../scripts/compute-next-release.sh) 按 **CalVer `YEAR.MONTH.SEQ`（Asia/Shanghai）** 计算下一版本：月份**不补零**（与既有 tag 如 `v2026.8.9` 一致，新月为 `2027.1.0` 而非 `2027.01.0`）；与最新 `v*` tag 同年同月则序号 +1，否则从 `当年.当月.0` 起；解析 tag/manifest 时接受带或不带前导零的月份。无 tag 时 manifest 仅当已在当月才作基数。已有 `release/v*` PR **仅当其版本仍等于算出的下一版且未打 tag** 时复用。在 `release/vN.N.N` 上跑 [`scripts/bump-version.sh`](../scripts/bump-version.sh)，**开或更新** PR，标题 `chore(release): 版本统一到 N.N.N`。
+1. **日常**：把 `feat` / `fix` 等合入 `main`。`release` 工作流在 `main` push 上先用 `git log -1 --pretty=%s` 判定 **commit subject**（不用整段 squash message）：若以 `chore(release):` 开头或 merge subject 含 `/release/v`，走发布；否则跑契约/marketplace 检查后，用 [`scripts/compute-next-release.sh`](../scripts/compute-next-release.sh) 按 **CalVer `YEAR.MONTH.SEQ`（Asia/Shanghai）** 计算下一版本：月份**不补零**（与既有 tag 如 `v2026.8.9` 一致，新月为 `2027.1.0` 而非 `2027.01.0`）；与最新 `v*` tag 同年同月则序号 +1，否则从 `当年.当月.0` 起；解析 tag/manifest 时接受带或不带前导零的月份。无 tag 时 manifest 仅当已在当月才作基数。已有 `release/v*` PR **仅当其版本仍等于算出的下一版且未打 tag** 时复用。在 `release/vN.N.N` 上跑 [`scripts/bump-version.sh`](../scripts/bump-version.sh)，**开或更新** PR，标题 `chore(release): 版本统一到 N.N.N`。
 2. **人工审阅并合入版本 PR**（不要 auto-merge）。合入后 `publish-release` 会：
    - 校验 format contract、marketplace↔plugin 一致性、manifest 版本 == `N.N.N`
    - 在 bump commit 上打 annotated tag `vN.N.N`
